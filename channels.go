@@ -64,13 +64,24 @@ func channelsPage(ui *UI) *Table {
 		ui.FocusMenu()
 	})
 
+	rowOffset := t.GetRowCount()
+	channels := getChannels(ui)
 
-	for row, channel := range getChannels(ui) {
+	t.SetSelectedFunc(func(row, column int) {
+		ui.log.Info("Selected channel id: " + fmt.Sprintf("%s", channels[row - rowOffset].shortChannelID) + "\n")
+	})
+
+
+
+	for row, channel := range channels {
 		var opener string
 		if channel.opener == "local" {
 			opener = "[greenyellow]local"
 		} else {
 			opener = "[darkviolet]remote"
+		}
+		if channel.private {
+			opener = "😎 " + opener
 		}
 		lastForward := formatDaysSince(channel.lastForward)
 		var lastForwardFormatted string
@@ -79,27 +90,27 @@ func channelsPage(ui *UI) *Table {
 		} else {
 			lastForwardFormatted = "never"
 		}
-		t.SetCell(row+4, 0,
+		t.SetCell(row + rowOffset, 0,
 			tview.NewTableCell("[red]"+formatSats(channel.remoteBalance)).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 1,
+		t.SetCell(row + rowOffset, 1,
 			tview.NewTableCell(getBalance(channel)).SetAlign(tview.AlignCenter))
-		t.SetCell(row+4, 2,
+		t.SetCell(row + rowOffset, 2,
 			tview.NewTableCell("[green]"+formatSats(channel.localBalance)).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 3,
+		t.SetCell(row + rowOffset, 3,
 			tview.NewTableCell("[deepskyblue]"+formatSats(uint64(channel.localBaseFee))).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 4,
+		t.SetCell(row + rowOffset, 4,
 			tview.NewTableCell("[deepskyblue]"+formatSats(uint64(channel.localFeeRate))).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 5,
+		t.SetCell(row + rowOffset, 5,
 			tview.NewTableCell("[lightyellow]"+formatSats(uint64(channel.remoteBaseFee))).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 6,
+		t.SetCell(row + rowOffset, 6,
 			tview.NewTableCell("[lightyellow]"+formatSats(uint64(channel.remoteFeeRate))).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 7,
+		t.SetCell(row + rowOffset, 7,
 			tview.NewTableCell("[grey]" + lastForwardFormatted).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 8,
+		t.SetCell(row + rowOffset, 8,
 			tview.NewTableCell("[lightcyan]" + formatSats(channel.localFees)).SetAlign(tview.AlignRight))
-		t.SetCell(row+4, 10,
+		t.SetCell(row + rowOffset, 10,
 			tview.NewTableCell(opener).SetAlign(tview.AlignCenter))
-		t.SetCell(row+4, 11,
+		t.SetCell(row + rowOffset, 11,
 			tview.NewTableCell("[white]"+channel.remoteAlias))
 	}
 
@@ -136,6 +147,8 @@ func getChannels(ui *UI) []Channel {
 
 	for _, peer := range peers.Get("peers").Array() {
 		channel := peer.Get("channels.0")
+		peerConnected := peer.Get("connected").Bool()
+
 		shortChannelID := channel.Get("short_channel_id").String()
 
 		if shortChannelID == "" {
@@ -144,6 +157,7 @@ func getChannels(ui *UI) []Channel {
 		capacity := channel.Get("msatoshi_total").Uint() / 1000
 		localBalance := channel.Get("msatoshi_to_us").Uint() / 1000
 		lastTxFee := channel.Get("last_tx_fee").Uint()
+		private := channel.Get("private").Bool()
 
 		chanInfo := getChannel(ui, shortChannelID)
 		chanLen := chanInfo.Get("channels.#").Uint()
@@ -216,6 +230,8 @@ func getChannels(ui *UI) []Channel {
 			remoteFeeRate:  remoteFee.rate,
 			lastForward:    lastForward,
 			localFees:      fees,
+			private:        private,
+			peerConnected:  peerConnected,
 		})
 
 	}
