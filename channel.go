@@ -18,4 +18,6 @@ type Channel struct {
 	lastForward    float64
 	opener         string
 	localFees      uint64
+	private        bool
+	peerConnected  bool
 }

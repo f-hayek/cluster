@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+const (
+	defaultTimeout = "3600"
+)
 var (
 	qr *tview.TextView
 )
@@ -20,13 +23,13 @@ func receivePage(ui *UI) tview.Primitive {
 	//qr.SetRegions(true)
 	qr.SetBorder(true)
 	qr.SetBorderColor(MainColor)
-	qr.SetTitle("QR Code")
+	qr.SetTitle(" QR Code ")
 	qr.SetTextAlign(tview.AlignCenter)
 
 	form := tview.NewForm()
 	form.AddInputField("Satoshi", "", 30, tview.InputFieldInteger, nil).
 		AddInputField("Memo", "", 30, nil, nil).
-		AddInputField("Timeout (seconds)", "3600", 30, tview.InputFieldInteger, nil).
+		AddInputField("Timeout (seconds)", defaultTimeout, 30, tview.InputFieldInteger, nil).
 		AddCheckbox("Receive on-chain", false, nil).
 		AddButton("Receive", func() {
 			ui.handleCreateInvoice(form, qr)
@@ -50,20 +53,20 @@ func generateLabel() string {
 
 func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 	satoshiField := form.GetFormItemByLabel("Satoshi").(*tview.InputField)
-	onChain := form.GetFormItemByLabel("Receive on-chain").(*tview.Checkbox).IsChecked()
-	descField := form.GetFormItemByLabel("Memo").(*tview.InputField).GetText()
-	timeoutField := form.GetFormItemByLabel("Timeout (seconds)").(*tview.InputField).GetText()
+	onChainField := form.GetFormItemByLabel("Receive on-chain").(*tview.Checkbox)
+	descField := form.GetFormItemByLabel("Memo").(*tview.InputField)
+	timeoutField := form.GetFormItemByLabel("Timeout (seconds)").(*tview.InputField)
 
 	sats, err := strconv.Atoi(satoshiField.GetText())
 	if err != nil {
 		log.Fatal("wrong amount")
 	}
 
-	timeout, err := strconv.Atoi(timeoutField)
+	timeout, err := strconv.Atoi(timeoutField.GetText())
 	if err != nil || timeout <= 0 {
-		ui.log.Warn("Timeout value " + timeoutField + " is incorrect\n")
+		ui.log.Warn("Timeout value " + timeoutField.GetText() + " is incorrect\n")
 	}
-	if onChain {
+	if onChainField.IsChecked() {
 		newAddr := getNewAddr(ui).Get("bech32").String()
 		qrs, err := QRCode(newAddr)
 		if err != nil {
@@ -76,7 +79,7 @@ func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 		inv := getInvoice(ui, map[string]interface{}{
 			"msatoshi":    sats * 1000,
 			"label":       generateLabel(),
-			"description": descField,
+			"description": descField.GetText(),
 			"expiry":      timeout})
 
 		bolt11 := inv.Get("bolt11").String()
@@ -92,7 +95,20 @@ func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 		ln.PaymentHandler = func(res gjson.Result) {
 			if res.Get("payment_hash").String() == paymentHash {
 				ui.log.Info("Invoice [white]" + paymentHash + " [green]PAID\n")
+				satoshiField.SetText("")
+				onChainField.SetChecked(false)
+				descField.SetText("")
+				timeoutField.SetText(defaultTimeout)
+				//os.Stdout = os.NewFile(uintptr(syscall.Stdout), "/dev/null")
+				//_, w, err := os.Pipe()
+				//if err != nil {
+				//	ui.log.Warn("Could not redirect Stdout\n")
+				//}
+				//origStdout := os.Stdout
+				//os.Stdout = w
 				ln.PaymentHandler = nil
+				//time.Sleep(1 * time.Second)
+				//os.Stdout = origStdout
 			}
 		}
 		ln.ListenForInvoices()

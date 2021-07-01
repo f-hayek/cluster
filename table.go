@@ -26,8 +26,9 @@ func (t *Table) AddColumnHeader(name string, align int) {
 
 func (t *Table) AddHeaderSeparator() {
 	cols := t.GetColumnCount()
+	rowOffset := t.GetRowCount()
 	for i := 0; i < cols; i++ {
-		t.SetCell(3, i,
+		t.SetCell(rowOffset, i,
 			tview.NewTableCell("────────────"))
 	}
 }
