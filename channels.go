@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"math"
 	"sort"
 	"strings"
@@ -16,17 +14,12 @@ func getBalance(channel Channel) string {
 	//fmt.Println("chan_id = ", channel.shortChannelID)
 	//fmt.Println("localBalance = ", channel.localBalance)
 	//fmt.Println("capacity = ", channel.capacity)
-	send := int(10 * channel.localBalance / (channel.capacity - uint64(channel.commitFee)))
+	send := int(10 * channel.localBalance / (channel.capacity - int64(channel.commitFee)))
 	recv := 10 - send
 	bar := "[red]" + strings.Repeat(".", recv) +
 		"[white]|" +
 		"[green]" + strings.Repeat(".", send)
 	return bar
-}
-
-func formatSats(v uint64) string {
-	p := message.NewPrinter(language.English)
-	return p.Sprintf("%d", v)
 }
 
 func formatDaysSince(ts float64) float64 {
@@ -97,13 +90,13 @@ func channelsPage(ui *UI) *Table {
 		t.SetCell(row + rowOffset, 2,
 			tview.NewTableCell("[green]"+formatSats(channel.localBalance)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 3,
-			tview.NewTableCell("[deepskyblue]"+formatSats(uint64(channel.localBaseFee))).SetAlign(tview.AlignRight))
+			tview.NewTableCell("[deepskyblue]"+formatSats(channel.localBaseFee)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 4,
-			tview.NewTableCell("[deepskyblue]"+formatSats(uint64(channel.localFeeRate))).SetAlign(tview.AlignRight))
+			tview.NewTableCell("[deepskyblue]"+formatSats(channel.localFeeRate)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 5,
-			tview.NewTableCell("[lightyellow]"+formatSats(uint64(channel.remoteBaseFee))).SetAlign(tview.AlignRight))
+			tview.NewTableCell("[lightyellow]"+formatSats(channel.remoteBaseFee)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 6,
-			tview.NewTableCell("[lightyellow]"+formatSats(uint64(channel.remoteFeeRate))).SetAlign(tview.AlignRight))
+			tview.NewTableCell("[lightyellow]"+formatSats(channel.remoteFeeRate)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 7,
 			tview.NewTableCell("[grey]" + lastForwardFormatted).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 8,
@@ -154,9 +147,9 @@ func getChannels(ui *UI) []Channel {
 		if shortChannelID == "" {
 			continue
 		}
-		capacity := channel.Get("msatoshi_total").Uint() / 1000
-		localBalance := channel.Get("msatoshi_to_us").Uint() / 1000
-		lastTxFee := channel.Get("last_tx_fee").Uint()
+		capacity := channel.Get("msatoshi_total").Int() / 1000
+		localBalance := channel.Get("msatoshi_to_us").Int() / 1000
+		lastTxFee := channel.Get("last_tx_fee").Int()
 		private := channel.Get("private").Bool()
 
 		chanInfo := getChannel(ui, shortChannelID)
@@ -169,13 +162,13 @@ func getChannels(ui *UI) []Channel {
 
 		if chanLen > 0 {
 			node1Fee = Fee{
-				chanInfo.Get("channels.0.base_fee_millisatoshi").Uint(),
-				chanInfo.Get("channels.0.fee_per_millionth").Uint(),
+				chanInfo.Get("channels.0.base_fee_millisatoshi").Int(),
+				chanInfo.Get("channels.0.fee_per_millionth").Int(),
 			}
 			if chanLen > 1 {
 				node2Fee = Fee{
-					chanInfo.Get("channels.1.base_fee_millisatoshi").Uint(),
-					chanInfo.Get("channels.1.fee_per_millionth").Uint(),
+					chanInfo.Get("channels.1.base_fee_millisatoshi").Int(),
+					chanInfo.Get("channels.1.fee_per_millionth").Int(),
 				}
 				if localNode.id != chanInfo.Get("channels.0.source").String() {
 					remoteFee = node1Fee
@@ -198,7 +191,7 @@ func getChannels(ui *UI) []Channel {
 		remoteAlias := getNode(ui, remoteNodeID).alias
 
 		lastForward := 0.0
-		fees := uint64(0)
+		fees := int64(0)
 
 		for _, forward := range forwards {
 			inChan := forward.Get("in_channel").String()
@@ -209,7 +202,7 @@ func getChannels(ui *UI) []Channel {
 			}
 			// local fees earned
 			if shortChannelID == outChan {
-				fees += forward.Get("fee").Uint() / 1000
+				fees += forward.Get("fee").Int() / 1000
 			}
 		}
 		channels = append(channels, Channel{

@@ -46,6 +46,28 @@ func getInfo(ui *UI) gjson.Result {
 	ui.log.Ok("OK\n")
 	return getinfo
 }
+func getConfig(ui *UI) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("listconfigs ")
+	listconfigs, err := client.Call("listconfigs")
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+	return listconfigs
+}
+func getFeerates(ui *UI) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("feerates ")
+	feerates, err := client.Call("feerates", "perkb")
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+	return feerates
+}
 
 func getNewAddr(ui *UI) gjson.Result {
 	client := NewClient(ui)
@@ -111,4 +133,45 @@ func getForwards(ui *UI, params map[string]interface{}) gjson.Result {
 	ui.log.Ok("OK\n")
 
 	return forwards
+}
+
+func getFunds(ui *UI, spent bool) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("listfunds ")
+
+	funds, err := client.Call("listfunds", spent)
+
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+
+	return funds
+}
+
+func getTransactions(ui *UI) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("listtransactions ")
+
+	transactions, err := client.Call("listtransactions")
+
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+
+	return transactions
+}
+func getPays(ui *UI) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("listpays ")
+	pays, err := client.Call("listpays")
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+	return pays
 }

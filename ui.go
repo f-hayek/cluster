@@ -42,29 +42,22 @@ func NewStatusBar() tview.Primitive {
 func NewMenu(ui *UI) *tview.List {
 	menu := tview.NewList().ShowSecondaryText(false).
 		AddItem("Node info", "Display general information about this node", 'i', func() {
-			ui.log.Info("[green]Dash")
-			ui.pages.SwitchToPage("dash")
+				ui.AddPage("dash", dashPage(ui), true, true)
+				ui.pages.SwitchToPage("dash")
+				ui.SetFocus("dash")
 		}).
 		AddItem("Pay", "Pay an invoice", 'p', func() {
 			ui.pages.SwitchToPage("pay")
 			ui.SetFocus("pay")
 		}).
 		AddItem("Receive", "Receive funds", 'r', func() {
-			if ui.pages.HasPage("receive") {
-				ui.pages.SwitchToPage("receive")
-			} else {
 				ui.AddPage("receive", receivePage(ui), true, true)
 				ui.pages.SwitchToPage("receive")
-			}
 			ui.SetFocus("receive")
 		}).
 		AddItem("Channels", "Display a list of all channels", 'c', func() {
-			if ui.pages.HasPage("channels") {
-				ui.pages.SwitchToPage("channels")
-			} else {
 				ui.AddPage("channels", channelsPage(ui), true, true)
 				ui.pages.SwitchToPage("channels")
-			}
 			ui.SetFocus("channels")
 		}).
 		AddItem("Modal", "", 'm', func() {
@@ -79,15 +72,6 @@ func NewMenu(ui *UI) *tview.List {
 
 	return menu
 
-}
-
-func (ui *UI) NewDashPage() tview.Primitive {
-	dash := tview.NewTextView()
-	dash.SetBorder(true)
-	dash.SetBorderColor(MainColor)
-	dash.SetTitle(" Dashboard ")
-	dash.SetText("Hello")
-	return dash
 }
 
 func (ui *UI) NewHelpPage() tview.Primitive {
@@ -116,8 +100,7 @@ func (ui *UI) FocusMenu() {
 	ui.app.SetFocus(ui.menu)
 }
 func (ui *UI) SetupPages() *tview.Pages {
-	ui.AddPage("dash", ui.NewDashPage(), true, true)
-	ui.AddPage("pay", payPage(ui), true, false)
+
 	ui.AddPage("help", ui.NewHelpPage(), true, false)
 	return ui.pages
 }

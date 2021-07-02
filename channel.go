@@ -3,21 +3,21 @@ package main
 type Channel struct {
 	shortChannelID string
 	active         bool
-	capacity       uint64
-	localBalance   uint64
-	remoteBalance  uint64
-	commitFee      uint64
+	capacity       int64
+	localBalance   int64
+	remoteBalance  int64
+	commitFee      int64
 	localNodeID    string
 	remoteNodeID   string
 	remoteAlias    string
-	outbound       uint64
-	localBaseFee   uint64
-	localFeeRate   uint64
-	remoteBaseFee  uint64
-	remoteFeeRate  uint64
+	outbound       int64
+	localBaseFee   int64
+	localFeeRate   int64
+	remoteBaseFee  int64
+	remoteFeeRate  int64
 	lastForward    float64
 	opener         string
-	localFees      uint64
+	localFees      int64
 	private        bool
 	peerConnected  bool
 }
