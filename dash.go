@@ -3,12 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/tidwall/gjson"
 	"io"
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type InfoLine struct {
@@ -165,7 +167,7 @@ func dashPage(ui *UI) tview.Primitive {
 		maxChan = math.Max(float64(chanSize), maxChan)
 	}
 
-	fc.AddRow("On-chain capacity", formatSats(onChainFunds) + " [white]in [yellow]" + fmt.Sprintf("%d [white]UTXO", numUtxo))
+	fc.AddRow("On-chain capacity", formatSats(onChainFunds) + " [white]in [yellow]" + fmt.Sprintf("%d [white]UTXOs", numUtxo))
 	fc.AddRow("Outbound LN capacity", formatSats(outboundFunds) + " [white]in [yellow]" + fmt.Sprintf("%s [white]channels", activeChannels))
 	fc.AddRow("Total capacity", formatSats(onChainFunds + outboundFunds))
 	fc.AddRow("Inbound LN capacity", formatSats(totalChannelFunds - outboundFunds))
@@ -204,21 +206,44 @@ func dashPage(ui *UI) tview.Primitive {
 	activity.Select(4, 0).SetFixed(4, 12)
 	activity.AddColumnHeader("\n[bold]date", tview.AlignRight)
 	activity.AddColumnHeader("\noperation", tview.AlignCenter)
+	activity.AddColumnHeader("\ndestination", tview.AlignRight)
 	activity.AddColumnHeader("\namount", tview.AlignRight)
 	activity.AddColumnHeader("\n description", tview.AlignRight)
 	activity.AddHeaderSeparator()
 
-	//rowOffset := 4
-	//idx := 0
-	//pays := getPays(ui)
-	//
-	//for _, output := range funds.Get("outputs").Array() {
-	//	if output.Get("status").String() == "spent" {
-	//		activity.SetCell(idx + rowOffset, 0,
-	//			tview.NewTableCell("[red]"+formatSats(output.Get("value").Int())).SetAlign(tview.AlignRight))
-	//		idx += 1
-	//	}
-	//}
+	activity.SetDoneFunc(func(key tcell.Key) {
+		ui.FocusMenu()
+	})
+	rowOffset := 4
+	idx := 0
+	pays := getPays(ui)
+
+
+	for _, pay := range pays.Get("pays").Array() {
+		if pay.Get("status").String() == "complete" {
+
+			createdAt := pay.Get("created_at").Int()
+			ts := time.Unix(createdAt,0)
+			amount, _ := Mstoi(pay.Get("amount_sent_msat").String())
+
+			decoded := decodePay(ui, pay.Get("bolt11").String())
+			destination := decoded.Get("payee").String()
+			payee := getNode(ui, destination)
+			description := decoded.Get("description").String()
+			activity.SetCell(idx + rowOffset, 0,
+				tview.NewTableCell( "[grey]" + ts.Format("2 Jan 2006 - 15:04")).SetAlign(tview.AlignRight))
+			activity.SetCell(idx + rowOffset, 1,
+				tview.NewTableCell("[green]sent to").SetAlign(tview.AlignCenter))
+			activity.SetCell(idx + rowOffset, 2,
+				tview.NewTableCell("[grey]" + payee.alias).SetAlign(tview.AlignRight))
+			activity.SetCell(idx + rowOffset, 3,
+				tview.NewTableCell("[yellow]" + formatSats(amount / 1000)).SetAlign(tview.AlignRight))
+			activity.SetCell(idx + rowOffset, 4,
+				tview.NewTableCell("[white]" + description).SetAlign(tview.AlignRight))
+
+			idx += 1
+		}
+	}
 	dash := tview.NewFlex()
 	dashLeft := tview.NewFlex()
 

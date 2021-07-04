@@ -175,3 +175,15 @@ func getPays(ui *UI) gjson.Result {
 	ui.log.Ok("OK\n")
 	return pays
 }
+
+func decodePay(ui *UI, bolt11 string) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("decodepay ")
+	decoded, err := client.Call("decodepay", bolt11)
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+	return decoded
+}
