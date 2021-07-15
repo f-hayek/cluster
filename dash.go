@@ -211,7 +211,7 @@ func dashPage(ui *UI) tview.Primitive {
 	activity.AddColumnHeader("\ndestination", tview.AlignRight)
 	activity.AddColumnHeader("\namount", tview.AlignRight)
 	activity.AddColumnHeader("\n description", tview.AlignRight)
-	activity.AddHeaderSeparator()
+	activity.Separator()
 
 	activity.SetDoneFunc(func(key tcell.Key) {
 		ui.FocusMenu()

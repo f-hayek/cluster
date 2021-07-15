@@ -24,11 +24,11 @@ func (t *Table) AddColumnHeader(name string, align int) {
 	}
 }
 
-func (t *Table) AddHeaderSeparator() {
+func (t *Table) Separator() {
 	cols := t.GetColumnCount()
 	rowOffset := t.GetRowCount()
 	for i := 0; i < cols; i++ {
 		t.SetCell(rowOffset, i,
-			tview.NewTableCell("──────────"))
+			tview.NewTableCell("───────────"))
 	}
 }
