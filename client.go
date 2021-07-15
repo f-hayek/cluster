@@ -14,6 +14,7 @@ type LnClient struct {
 }
 
 var ln *LnClient
+var NodeCache = make(map[string]Node)
 
 func NewClient(ui *UI) *LnClient {
 	if ln != nil {
@@ -92,20 +93,28 @@ func getInvoice(ui *UI, params map[string]interface{}) gjson.Result {
 
 }
 func getNode(ui *UI, id string) Node {
+
+	n, exists := NodeCache[id]
+	if exists {
+		return n
+	}
+
 	client := NewClient(ui)
 
 	ui.log.Info("listnodes [white]" + id + " ")
-	node, err := client.Call("listnodes", id)
+	res, err := client.Call("listnodes", id)
 	if err != nil {
 		ui.log.Warn("error: " + err.Error() + "\n")
 	}
 	ui.log.Ok("OK\n")
 
-	return Node{
-		id:    node.Get("nodes.0.id").String(),
-		alias: node.Get("nodes.0.alias").String(),
-		color: node.Get("nodes.0.color").String(),
+	node := Node{
+		id:    res.Get("nodes.0.id").String(),
+		alias: res.Get("nodes.0.alias").String(),
+		color: res.Get("nodes.0.color").String(),
 	}
+	NodeCache[id] = node
+	return NodeCache[id]
 
 }
 func getChannel(ui *UI, chanID string) gjson.Result {
