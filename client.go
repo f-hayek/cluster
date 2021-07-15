@@ -26,7 +26,7 @@ func NewClient(ui *UI) *LnClient {
 		}
 		client := &lightning.Client{
 			Path:        ui.rpcPath,
-			CallTimeout: 30 * time.Second, // optional, defaults to 5 seconds
+			CallTimeout: 60 * time.Second, // optional, defaults to 5 seconds
 		}
 		ln = &LnClient{
 			client,

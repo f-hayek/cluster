@@ -2,6 +2,7 @@ package main
 
 type Channel struct {
 	shortChannelID string
+	state          string
 	active         bool
 	capacity       int64
 	localBalance   int64
@@ -18,6 +19,7 @@ type Channel struct {
 	lastForward    float64
 	opener         string
 	localFees      int64
+	remoteFees     int64
 	private        bool
 	peerConnected  bool
 }

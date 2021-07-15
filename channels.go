@@ -49,6 +49,7 @@ func channelsPage(ui *UI) *Table {
 	t.AddColumnHeader("local\nfees\n(sat)", tview.AlignRight)
 	t.AddColumnHeader("remote\nfees\n(estimate)", tview.AlignRight)
 	t.AddColumnHeader("\nopener", tview.AlignCenter)
+	t.AddColumnHeader("\nstatus", tview.AlignCenter)
 	t.AddColumnHeader("\nalias", tview.AlignLeft)
 	t.AddHeaderSeparator()
 
@@ -62,10 +63,32 @@ func channelsPage(ui *UI) *Table {
 
 	t.SetSelectedFunc(func(row, column int) {
 		ui.log.Info("Selected channel id: " + fmt.Sprintf("%s", channels[row - rowOffset].shortChannelID) + "\n")
+		ui.log.Info("Current commit fee: " + fmt.Sprintf("%d", channels[row - rowOffset].commitFee) + " sats\n")
+		ui.log.Info("Remote base fee: " + fmt.Sprintf("%d", channels[row - rowOffset].remoteBaseFee) + "\n")
 	})
 
 
 	for row, channel := range channels {
+		var state string
+		switch channel.state {
+		case "CHANNELD_AWAITING_LOCKIN":
+			state = "[orange]opening"
+		case "CHANNELD_NORMAL":
+			if channel.peerConnected {
+				state = "[green]online"
+			} else {
+				state = "[grey]offline"
+			}
+		case "AWAITING UNILATERAL":
+			state = "[orange]awaiting unilateral"
+		case "CHANNELD_SHUTTING_DOWN", "CLOSINGD_SIGEXCHANGE", "CLOSINGD_COMPLETE":
+			state = "[lightgrey]closing"
+		case "ONCHAIN":
+			state = "[lightgrey]onchain"
+		case "CLOSED":
+			state = "[grey]closed"
+		}
+
 		var opener string
 		if channel.opener == "local" {
 			opener = "[greenyellow]local"
@@ -75,10 +98,20 @@ func channelsPage(ui *UI) *Table {
 		if channel.private {
 			opener = "😎 " + opener
 		}
+		var connected string
+		if channel.peerConnected {
+			connected = "[white]"
+		} else {
+			connected = "[grey]"
+		}
 		lastForward := formatDaysSince(channel.lastForward)
 		var lastForwardFormatted string
 		if lastForward > 0.0 {
-			lastForwardFormatted = fmt.Sprintf("%.1f", lastForward)
+			if lastForward > 60 {
+				lastForwardFormatted = fmt.Sprintf("%s%.1f", "[red]", lastForward)
+			} else {
+				lastForwardFormatted = fmt.Sprintf("%s%.1f", "[white]", lastForward)
+			}
 		} else {
 			lastForwardFormatted = "never"
 		}
@@ -97,13 +130,17 @@ func channelsPage(ui *UI) *Table {
 		t.SetCell(row + rowOffset, 6,
 			tview.NewTableCell("[lightyellow]"+formatSats(channel.remoteFeeRate)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 7,
-			tview.NewTableCell("[grey]" + lastForwardFormatted).SetAlign(tview.AlignRight))
+			tview.NewTableCell(lastForwardFormatted).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 8,
 			tview.NewTableCell("[lightcyan]" + formatSats(channel.localFees)).SetAlign(tview.AlignRight))
+		t.SetCell(row + rowOffset, 9,
+			tview.NewTableCell("[lightcyan]" + formatSats(channel.remoteFees)).SetAlign(tview.AlignRight))
 		t.SetCell(row + rowOffset, 10,
 			tview.NewTableCell(opener).SetAlign(tview.AlignCenter))
 		t.SetCell(row + rowOffset, 11,
-			tview.NewTableCell("[white]"+channel.remoteAlias))
+			tview.NewTableCell(state).SetAlign(tview.AlignCenter))
+		t.SetCell(row + rowOffset, 12,
+			tview.NewTableCell(connected + channel.remoteAlias))
 	}
 
 	return t
@@ -140,7 +177,7 @@ func getChannels(ui *UI) []Channel {
 	for _, peer := range peers.Get("peers").Array() {
 		channel := peer.Get("channels.0")
 		peerConnected := peer.Get("connected").Bool()
-
+		state := channel.Get("state").String()
 		shortChannelID := channel.Get("short_channel_id").String()
 
 		if shortChannelID == "" {
@@ -148,7 +185,12 @@ func getChannels(ui *UI) []Channel {
 		}
 		capacity := channel.Get("msatoshi_total").Int() / 1000
 		localBalance := channel.Get("msatoshi_to_us").Int() / 1000
-		lastTxFee := channel.Get("last_tx_fee").Int()
+		lastTxFee, err := Mstoi(channel.Get("last_tx_fee").String())
+		if err != nil {
+			lastTxFee = 0
+		} else {
+			lastTxFee = lastTxFee / 1000
+		}
 		private := channel.Get("private").Bool()
 
 		chanInfo := getChannel(ui, shortChannelID)
@@ -190,23 +232,30 @@ func getChannels(ui *UI) []Channel {
 		remoteAlias := getNode(ui, remoteNodeID).alias
 
 		lastForward := 0.0
-		fees := int64(0)
+		localFees := int64(0)
+		remoteFees := int64(0)
 
 		for _, forward := range forwards {
 			inChan := forward.Get("in_channel").String()
 			outChan := forward.Get("out_channel").String()
+			amountIn := forward.Get("in_msatoshi").Int() / 1000
 			// last forward
 			if shortChannelID == inChan || shortChannelID == outChan {
 				lastForward = math.Max(forward.Get("resolved_time").Float(), lastForward)
 			}
 			// local fees earned
 			if shortChannelID == outChan {
-				fees += forward.Get("fee").Int() / 1000
+				localFees += forward.Get("fee").Int() / 1000
+			}
+			// remote fees (estimate if base/rate fee changed)
+			if shortChannelID == inChan {
+				remoteFees += (remoteFee.base + remoteFee.rate * amountIn / 1000) / 1000
 			}
 		}
 		channels = append(channels, Channel{
+			state:     state,
 			shortChannelID: channel.Get("short_channel_id").String(),
-			active:         channel.Get("state").String() == "CHANNELD_NORMAL",
+			active:         state == "CHANNELD_NORMAL",
 			opener:         channel.Get("opener").String(),
 			localNodeID:    localNode.id,
 			remoteNodeID:   remoteNodeID,
@@ -221,7 +270,8 @@ func getChannels(ui *UI) []Channel {
 			remoteBaseFee:  remoteFee.base,
 			remoteFeeRate:  remoteFee.rate,
 			lastForward:    lastForward,
-			localFees:      fees,
+			localFees:      localFees,
+			remoteFees:     remoteFees,
 			private:        private,
 			peerConnected:  peerConnected,
 		})

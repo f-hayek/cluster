@@ -116,6 +116,8 @@ func dashPage(ui *UI) tview.Primitive {
 		largeChannels = "[red]Not supported"
 	}
 	ic.AddRow("Large channels", largeChannels)
+	ic.AddRow("Mininum capacity", formatSats(config.Get("min-capacity-sat").Int()))
+
 	collectedFees := info.Get("msatoshi_fees_collected").Int() / 1000
 
 	ic.AddRow("Fees collected (sats)", "[yellow]" + formatSats(collectedFees))

@@ -29,6 +29,6 @@ func (t *Table) AddHeaderSeparator() {
 	rowOffset := t.GetRowCount()
 	for i := 0; i < cols; i++ {
 		t.SetCell(rowOffset, i,
-			tview.NewTableCell("────────────"))
+			tview.NewTableCell("──────────"))
 	}
 }
