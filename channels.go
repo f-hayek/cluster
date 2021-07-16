@@ -265,7 +265,15 @@ func getChannels(ui *UI) []Channel {
 
 		}
 		remoteNodeID := peer.Get("id").String()
-		remoteAlias := getNode(ui, remoteNodeID).alias
+		remoteNode := getNode(ui, remoteNodeID)
+
+		var remoteAlias string
+
+		if remoteNode.alias != "" {
+			remoteAlias = remoteNode.alias
+		} else {
+			remoteAlias = remoteNodeID
+		}
 
 		lastForward := 0.0
 		localFees := int64(0)
