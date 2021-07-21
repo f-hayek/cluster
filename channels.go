@@ -6,9 +6,115 @@ import (
 	"github.com/rivo/tview"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
+
+type SortFunc func(channels []Channel) []Channel
+type SortFuncs map[string]SortFunc
+
+var sortFuncs = SortFuncs {
+	"Channel balance": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.localBalance)/float32(c1.capacity-c1.commitFee) < float32(c2.localBalance)/float32(c2.capacity-c2.commitFee)
+		})
+		return channels
+	},
+	"Inbound liquidity": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.remoteBalance) > float32(c2.remoteBalance)
+		})
+		return channels
+	},
+	"Outbound liquidity": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.localBalance) > float32(c2.localBalance)
+		})
+		return channels
+	},
+	"Local base fee": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.localBaseFee) > float32(c2.localBaseFee)
+		})
+		return channels
+	},
+	"Local fee rate": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.localFeeRate) > float32(c2.localFeeRate)
+		})
+		return channels
+	},
+	"Remote base fee": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.remoteBaseFee) > float32(c2.remoteBaseFee)
+		})
+		return channels
+	},
+	"Remote fee rate": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.remoteFeeRate) > float32(c2.remoteFeeRate)
+		})
+		return channels
+	},
+	"Last forward": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.lastForward) > float32(c2.lastForward)
+		})
+		return channels
+	},
+	"Local fees earned": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.localFees) > float32(c2.localFees)
+		})
+		return channels
+	},
+	"Remote fees earned": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return float32(c1.remoteFees) > float32(c2.remoteFees)
+		})
+		return channels
+	},
+	"Alias": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return c1.remoteAlias < c2.remoteAlias
+		})
+		return channels
+	},
+	"Channel age (youngest first)": func(channels []Channel) []Channel {
+		sort.Slice(channels, func(i, j int) bool {
+			c1 := channels[i]
+			c2 := channels[j]
+			return c1.block > c2.block
+		})
+		return channels
+	},
+
+}
+
+var selectedSortFunc = "Channel balance"
 
 func getBalance(channel Channel) string {
 	//fmt.Println("chan_id = ", channel.shortChannelID)
@@ -49,6 +155,7 @@ func channelsPage(ui *UI) *Table {
 	t.AddColumnHeader("local\nfees earned\n(sat)", tview.AlignRight)
 	t.AddColumnHeader("remote\nfees earned\n(estimate)", tview.AlignRight)
 	t.AddColumnHeader("\nstatus", tview.AlignCenter)
+	t.AddColumnHeader("\nage\n(blocks)", tview.AlignCenter)
 	t.AddColumnHeader("\nalias", tview.AlignLeft)
 	t.Separator()
 	rowOffset := t.GetRowCount()
@@ -66,6 +173,8 @@ func channelsPage(ui *UI) *Table {
 		ui.log.Info("Selected channel id: " + fmt.Sprintf("%s", channels[row - rowOffset].shortChannelID) + "\n")
 		ui.log.Info("Current commit fee: " + fmt.Sprintf("%d", channels[row - rowOffset].commitFee) + " sats\n")
 		ui.log.Info("Remote base fee: " + fmt.Sprintf("%d", channels[row - rowOffset].remoteBaseFee) + "\n")
+		ui.log.Info("Block: " + fmt.Sprintf("%d", channels[row - rowOffset].block) + "\n")
+
 	})
 
 	// Do not allow to select the header
@@ -73,6 +182,38 @@ func channelsPage(ui *UI) *Table {
 		if row < rowOffset {
 			t.Select(row + 1, column)
 		}
+	})
+
+	// Keyboard handler
+	t.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 's':
+			if ui.HasPage("channelSort") {
+				ui.DeletePage("channelSort")
+			} else {
+				ui.AddPage("channelSort", ui.NewChannelSortPage(), true, true)
+				//ui.pages.SwitchToPage("channelSort")
+				ui.SetFocus("channelSort")
+			}
+		case 'h':
+			help := []string{
+			"j/k   - Scroll down/up              ",
+			"G/g   - Scroll to bottom/top        ",
+			"Enter - Go to channel details page  ",
+			"o     - Open new channel(s)         ",
+			"c     - Close selected channel      ",
+			"s     - Sort channels by            ",
+			"h     - Toggle this help screen     ",
+			"ESC   - Go back                     ",
+			}
+			if ui.HasPage("help") {
+				ui.DeletePage("help")
+			} else {
+				ui.AddPage("help", ui.NewHelpPage(help), true, true)
+			}
+
+		}
+		return event
 	})
 
 	totalInbound := int64(0)
@@ -152,6 +293,8 @@ func channelsPage(ui *UI) *Table {
 		t.SetCell(currentRow, 10,
 			tview.NewTableCell(state).SetAlign(tview.AlignCenter))
 		t.SetCell(currentRow, 11,
+			tview.NewTableCell(fmt.Sprintf("%d", channel.age)).SetAlign(tview.AlignCenter))
+		t.SetCell(currentRow, 12,
 			tview.NewTableCell(aliasColor + channel.remoteAlias))
 
 		t.Separator()
@@ -193,6 +336,7 @@ func getChannels(ui *UI) []Channel {
 		getInfo.Get("id").String(),
 		getInfo.Get("alias").String(),
 		getInfo.Get("color").String(),
+		getInfo.Get("blockheight").Int(),
 	}
 
 	ui.log.Info("listpeers ")
@@ -218,6 +362,17 @@ func getChannels(ui *UI) []Channel {
 
 		if shortChannelID == "" {
 			continue
+		}
+		// extract the block from shortChannelID
+		parsedBlock := strings.Split(shortChannelID, "x")
+		var block int64
+		var age int64
+		if len(parsedBlock) == 3 {
+			b, err := strconv.ParseInt(parsedBlock[0], 10, 64)
+			if err == nil {
+				block = b
+				age = localNode.blockheight - block
+			}
 		}
 		capacity := channel.Get("msatoshi_total").Int() / 1000
 		localBalance := channel.Get("msatoshi_to_us").Int() / 1000
@@ -308,7 +463,6 @@ func getChannels(ui *UI) []Channel {
 			localBalance:   localBalance,
 			remoteBalance:  capacity - localBalance,
 			commitFee:      lastTxFee,
-			outbound:       200,
 			localBaseFee:   localFee.base,
 			localFeeRate:   localFee.rate,
 			remoteBaseFee:  remoteFee.base,
@@ -318,15 +472,55 @@ func getChannels(ui *UI) []Channel {
 			remoteFees:     remoteFees,
 			private:        private,
 			peerConnected:  peerConnected,
+			block:          block,
+			age:            age,
 		})
 
 	}
 
-	sort.Slice(channels, func(i, j int) bool {
-		c1 := channels[i]
-		c2 := channels[j]
-		return float32(c1.localBalance)/float32(c1.capacity-c1.commitFee) < float32(c2.localBalance)/float32(c2.capacity-c2.commitFee)
+	return sortFuncs[selectedSortFunc](channels)
+
+}
+
+func (ui *UI) NewChannelSortPage() tview.Primitive {
+
+	form := tview.NewForm()
+	form.SetBorder(true)
+	form.SetTitle(" Sort channels by ")
+	form.SetBorderColor(MainColor)
+	options := []string{
+		"Channel balance",
+		"Inbound liquidity",
+		"Outbound liquidity",
+		"Local base fee",
+		"Local fee rate",
+		"Remote base fee",
+		"Remote fee rate",
+		"Last forward",
+		"Local fees earned",
+		"Remote fees earned",
+		"Remote alias",
+		"Channel age (youngest first)",
+	}
+
+	initialOption := 0
+	for idx, option := range options {
+		if option == selectedSortFunc {
+			initialOption = idx
+			break
+		}
+	}
+
+	form.AddDropDown("Order channels by ", options, initialOption, func(option string, optionIdx int) {
+		if option != selectedSortFunc {
+			selectedSortFunc = option
+			ui.DeletePage("channelSort")
+			ui.AddPage("channels", channelsPage(ui), true, true)
+			ui.pages.SwitchToPage("channels")
+			ui.SetFocus("channels")
+		}
 	})
-	return channels
+
+	return ui.Modal(form, 80, 40)
 
 }

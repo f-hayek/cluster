@@ -11,7 +11,6 @@ type Channel struct {
 	localNodeID    string
 	remoteNodeID   string
 	remoteAlias    string
-	outbound       int64
 	localBaseFee   int64
 	localFeeRate   int64
 	remoteBaseFee  int64
@@ -22,4 +21,6 @@ type Channel struct {
 	remoteFees     int64
 	private        bool
 	peerConnected  bool
+	block          int64
+	age            int64
 }

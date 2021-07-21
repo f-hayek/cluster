@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"strings"
 )
 
 const (
@@ -60,8 +61,21 @@ func NewMenu(ui *UI) *tview.List {
 				ui.pages.SwitchToPage("channels")
 			ui.SetFocus("channels")
 		}).
-		AddItem("Modal", "", 'm', func() {
-			ui.pages.SwitchToPage("modal")
+		AddItem("Help", "", 'h', func() {
+			if ui.HasPage("help") {
+				ui.DeletePage("help")
+			} else {
+				help := []string{
+					"(i)   - Show high level overview of the node",
+					"(p)   - Pay an invoice                      ",
+					"(r)   - Receive sats (create an invoice)    ",
+					"(c)   - Show channels                       ",
+					"(h)   - Toggle this help screen             ",
+					"(ESC) - Go back                             ",
+					"(q)   - Quit the application                "}
+				ui.AddPage("help", ui.NewHelpPage(help), true, true)
+				ui.pages.SwitchToPage("help")
+			}
 		}).
 		AddItem("Quit", "Press to exit", 'q', func() {
 			ui.app.Stop()
@@ -74,15 +88,29 @@ func NewMenu(ui *UI) *tview.List {
 
 }
 
-func (ui *UI) NewHelpPage() tview.Primitive {
+func (ui *UI) NewHelpPage(help []string) tview.Primitive {
 	tv := tview.NewTextView()
 	tv.SetBorderColor(MainColor)
 	tv.SetBorder(true)
-	tv.SetTitle(" HELP ")
-	tv.SetText("Some help text")
+	tv.SetTitle(" Keyboard Shortcuts ")
+	tv.SetDynamicColors(true)
+
+	tv.SetText("\n\n" + strings.Join(help, "\n"))
+	tv.SetTextAlign(tview.AlignCenter)
 	tv.SetDoneFunc(func(key tcell.Key) {
 		ui.pages.HidePage("help")
+		ui.FocusMenu()
 	})
+
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'h':
+			ui.pages.HidePage("help")
+			ui.FocusMenu()
+		}
+		return event
+	})
+
 	return ui.Modal(tv, 80, 40)
 }
 
@@ -91,18 +119,30 @@ func (ui *UI) AddPage(name string, p tview.Primitive, resize, visible bool) tvie
 	ui.primitives[name] = p
 	return p
 }
+func (ui *UI) HasPage(name string) bool {
+	_, exists := ui.primitives[name]
+	if exists {
+		return true
+	} else {
+		return false
+	}
+}
+func (ui *UI) DeletePage(name string) bool {
+	ui.pages.HidePage(name)
+	delete(ui.primitives, name)
+	return true
+}
 func (ui *UI) SetFocus(name string) tview.Primitive {
 	p := ui.primitives[name]
 	ui.app.SetFocus(p)
 	return p
 }
+
 func (ui *UI) FocusMenu() {
 	ui.app.SetFocus(ui.menu)
 }
 func (ui *UI) SetupPages() *tview.Pages {
-
-	ui.AddPage("help", ui.NewHelpPage(), true, false)
-	return ui.pages
+  return ui.pages
 }
 func (ui *UI) NewLayout() tview.Primitive {
 	page := tview.NewGrid()
