@@ -196,3 +196,14 @@ func decodePay(ui *UI, bolt11 string) gjson.Result {
 	ui.log.Ok("OK\n")
 	return decoded
 }
+func getInvoices(ui *UI) gjson.Result {
+	client := NewClient(ui)
+
+	ui.log.Info("listinvoices ")
+	invoices, err := client.Call("listinvoices")
+	if err != nil {
+		ui.log.Warn("error: " + err.Error())
+	}
+	ui.log.Ok("OK\n")
+	return invoices
+}

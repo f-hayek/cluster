@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 	"io"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,13 @@ func (ic *InfoColumn) Print(w io.Writer) {
 	}
 }
 
+type Activity struct {
+	date time.Time
+	amount int64
+	operation string
+	description string
+}
+
 func findOutput(outputs []gjson.Result, txid string, outputIdx int64) (int64, error) {
 	for _, output := range outputs {
 		oTxid := output.Get("txid").String()
@@ -84,6 +92,15 @@ func calculateSpentFees(transactions, funds gjson.Result) int64 {
 		}
 	}
 	return fees
+}
+
+func formatDesc(desc string) string {
+	descLen := len(desc)
+	if descLen > 50 {
+		return " " + desc[0:30] + " (...) " + desc[descLen-14:]
+	} else {
+		return desc
+	}
 }
 func dashPage(ui *UI) tview.Primitive {
 
@@ -199,53 +216,134 @@ func dashPage(ui *UI) tview.Primitive {
 	fec.Print(feesPane)
 
 
-	// Recent activity
+	// Recent activityTable
 
-	activity := NewTable()
-	activity.SetBorder(true).SetBorderColor(MainColor)
-	activity.SetTitle(" Recent activity ")
+	activityTable := NewTable()
+	activityTable.SetBorder(true).SetBorderColor(MainColor)
+	activityTable.SetTitle(" Recent activity ")
 
-	activity.Select(4, 0).SetFixed(4, 12)
-	activity.AddColumnHeader("\n[bold]date", tview.AlignRight)
-	activity.AddColumnHeader("\noperation", tview.AlignCenter)
-	activity.AddColumnHeader("\ndestination", tview.AlignRight)
-	activity.AddColumnHeader("\namount", tview.AlignRight)
-	activity.AddColumnHeader("\n description", tview.AlignRight)
-	activity.Separator()
+	activityTable.AddColumnHeader("\n[bold]date", tview.AlignCenter)
+	activityTable.AddColumnHeader("\noperation", tview.AlignRight)
+	activityTable.AddColumnHeader("\namount", tview.AlignRight)
+	activityTable.AddColumnHeader("\n description", tview.AlignLeft)
+	activityTable.Separator(20)
 
-	activity.SetDoneFunc(func(key tcell.Key) {
+	activityTable.SetDoneFunc(func(key tcell.Key) {
 		ui.FocusMenu()
 	})
-	rowOffset := 4
-	idx := 0
-	pays := getPays(ui)
+	activityTable.SetSelectable(true, false)
 
+	rowOffset := activityTable.GetRowCount()
+	activityTable.Select(rowOffset, 0).SetFixed(rowOffset, 4)
 
-	for _, pay := range pays.Get("pays").Array() {
+	// Do not allow to select the header
+	activityTable.SetSelectionChangedFunc(func(row, column int) {
+		if row < rowOffset {
+			activityTable.Select(row + 1, column)
+		}
+	})
+
+	var activities []*Activity
+
+	// pays
+	pays := getPays(ui).Get("pays").Array()
+
+	for _, pay := range pays {
+		// only completed pays
 		if pay.Get("status").String() == "complete" {
-
-			createdAt := pay.Get("created_at").Int()
-			ts := time.Unix(createdAt,0)
+			// date
+			date := time.Unix(pay.Get("created_at").Int(), 0)
+			// amount
 			amount, _ := Mstoi(pay.Get("amount_sent_msat").String())
 
-			decoded := decodePay(ui, pay.Get("bolt11").String())
-			destination := decoded.Get("payee").String()
+			// operation
+			destination := pay.Get("destination").String()
 			payee := getNode(ui, destination)
-			description := decoded.Get("description").String()
-			activity.SetCell(idx + rowOffset, 0,
-				tview.NewTableCell( "[grey]" + ts.Format("2 Jan 2006 - 15:04")).SetAlign(tview.AlignRight))
-			activity.SetCell(idx + rowOffset, 1,
-				tview.NewTableCell("[green]sent to").SetAlign(tview.AlignCenter))
-			activity.SetCell(idx + rowOffset, 2,
-				tview.NewTableCell("[grey]" + payee.alias).SetAlign(tview.AlignRight))
-			activity.SetCell(idx + rowOffset, 3,
-				tview.NewTableCell("[yellow]" + formatSats(amount / 1000)).SetAlign(tview.AlignRight))
-			activity.SetCell(idx + rowOffset, 4,
-				tview.NewTableCell("[white]" + description).SetAlign(tview.AlignRight))
+			var operation string
+			if destination == info.Get("id").String() {
+				operation = "[greenyellow]rebalance"
+			} else {
+				operation = "[darkviolet]sent to " + payee.alias
+			}
 
-			idx += 1
+			// description
+			bolt11 := pay.Get("bolt11").String()
+			var bolt11Decoded gjson.Result
+			var description string
+
+			if bolt11 != "" {
+				bolt11Decoded = decodePay(ui, bolt11)
+				description = bolt11Decoded.Get("description").String()
+			} else {
+				description = pay.Get("label").String()
+			}
+
+			description = " " + formatDesc(description)
+
+			activities = append(activities, &Activity{
+				date,
+				amount / 1000,
+				operation,
+				description,
+			})
 		}
 	}
+
+	// invoices
+
+	invoices := getInvoices(ui).Get("invoices").Array()
+
+	for _, invoice := range invoices {
+		// only paid invoices
+		if invoice.Get("status").String() == "paid" {
+			// date
+			date := time.Unix(invoice.Get("paid_at").Int(), 0)
+
+			// amount
+			amount := invoice.Get("msatoshi_received").Int()
+
+			// operation
+			operation := "[green]received"
+
+			// description
+			description := invoice.Get("description").String()
+
+			description = " " + formatDesc(description)
+
+			activities = append(activities, &Activity{
+				date,
+				amount / 1000,
+				operation,
+				description,
+			})
+		}
+	}
+	// activities := pays + invoices
+	sort.Slice(activities, func(i, j int) bool {
+		a1 := activities[i]
+		a2 := activities[j]
+		return a2.date.Before(a1.date)
+	})
+
+
+	for idx, activity := range activities {
+
+		activityTable.SetCell(idx+rowOffset, 0,
+			tview.NewTableCell("[grey] "+activity.date.Format("2006-01-02 15:04")).SetAlign(tview.AlignCenter))
+		activityTable.SetCell(idx+rowOffset, 1,
+			tview.NewTableCell(activity.operation).SetAlign(tview.AlignRight))
+		var amountColor string
+		if activity.operation == "[green]received" {
+			amountColor = "[green]"
+		} else {
+			amountColor = "[red]"
+		}
+		activityTable.SetCell(idx+rowOffset, 2,
+			tview.NewTableCell(amountColor + formatSats(activity.amount)).SetAlign(tview.AlignRight))
+		activityTable.SetCell(idx+rowOffset, 3,
+			tview.NewTableCell("[white]" + activity.description).SetAlign(tview.AlignLeft))
+	}
+
 	dash := tview.NewFlex()
 	dashLeft := tview.NewFlex()
 
@@ -255,7 +353,7 @@ func dashPage(ui *UI) tview.Primitive {
 	dashLeft.AddItem(feesPane, 0, 1, false)
 
 	dash.AddItem(dashLeft, 0, 1, false)
-	dash.AddItem(activity, 0, 1, true)
+	dash.AddItem(activityTable, 0, 1, true)
 
 	return dash
 }

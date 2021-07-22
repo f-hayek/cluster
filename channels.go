@@ -157,7 +157,7 @@ func channelsPage(ui *UI) *Table {
 	t.AddColumnHeader("\nstatus", tview.AlignCenter)
 	t.AddColumnHeader("\nage\n(blocks)", tview.AlignCenter)
 	t.AddColumnHeader("\nalias", tview.AlignLeft)
-	t.Separator()
+	t.Separator(11)
 	rowOffset := t.GetRowCount()
 	t.Select(rowOffset, 0)
 	t.SetFixed(rowOffset, t.GetColumnCount())
@@ -297,7 +297,7 @@ func channelsPage(ui *UI) *Table {
 		t.SetCell(currentRow, 12,
 			tview.NewTableCell(aliasColor + channel.remoteAlias))
 
-		t.Separator()
+		t.Separator(11)
 
 		// totals
 		totalInbound += channel.remoteBalance
