@@ -188,7 +188,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	fc.AddRow("On-chain capacity", formatSats(onChainFunds) + " [white]in [yellow]" + fmt.Sprintf("%d [white]UTXOs", numUtxo))
 	fc.AddRow("Outbound LN capacity", formatSats(outboundFunds) + " [white]in [yellow]" + fmt.Sprintf("%s [white]channels", activeChannels))
-	fc.AddRow("Total capacity", formatSats(onChainFunds + outboundFunds))
+	fc.AddRow("Total node worth", formatSats(onChainFunds + outboundFunds))
 	fc.AddRow("Inbound LN capacity", formatSats(totalChannelFunds - outboundFunds))
 	fc.AddRow("Smallest channel", formatSats(int64(minChan)))
 	fc.AddRow("Biggest channel", formatSats(int64(maxChan)))

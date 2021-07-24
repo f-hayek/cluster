@@ -521,6 +521,6 @@ func (ui *UI) NewChannelSortPage() tview.Primitive {
 		}
 	})
 
-	return ui.Modal(form, 80, 40)
+	return ui.Modal(form, 40, 10)
 
 }
