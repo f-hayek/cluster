@@ -57,8 +57,8 @@ func NewMenu(ui *UI) *tview.List {
 			ui.SetFocus("receive")
 		}).
 		AddItem("Channels", "Display a list of all channels", 'c', func() {
-				ui.AddPage("channels", channelsPage(ui), true, true)
-				ui.pages.SwitchToPage("channels")
+			ui.AddPage("channels", channelsPage(ui), true, true)
+			ui.pages.SwitchToPage("channels")
 			ui.SetFocus("channels")
 		}).
 		AddItem("Help", "", 'h', func() {

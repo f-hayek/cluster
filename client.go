@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/fiatjaf/lightningd-gjson-rpc"
 	"github.com/tidwall/gjson"
-	"log"
 	"os"
 	"time"
 )
@@ -36,56 +36,57 @@ func NewClient(ui *UI) *LnClient {
 		return ln
 	}
 }
-func getInfo(ui *UI) gjson.Result {
+
+func call(ui *UI, method string, params ...interface{}) gjson.Result {
 	client := NewClient(ui)
 
-	ui.log.Info("getinfo ")
-	getinfo, err := client.Call("getinfo")
+	ui.log.Info(method + " ")
+
+	start := time.Now()
+
+	results, err := client.Call(method, params...)
+
 	if err != nil {
 		ui.log.Warn("error: " + err.Error())
 	}
-	ui.log.Ok("OK\n")
-	return getinfo
+
+	finish := time.Now()
+
+	ui.log.Ok(fmt.Sprintf("[%dms]\n", (finish.Sub(start)).Milliseconds()))
+
+	return results
+}
+
+func getInfo(ui *UI) gjson.Result {
+
+	return call(ui, "getinfo")
+
 }
 func getConfig(ui *UI) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("listconfigs ")
-	listconfigs, err := client.Call("listconfigs")
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-	return listconfigs
+	return call(ui, "listconfigs")
+
 }
 func getFeerates(ui *UI) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("feerates ")
-	feerates, err := client.Call("feerates", "perkb")
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-	return feerates
+	return call(ui, "feerates", "perkb")
+
 }
 
 func getNewAddr(ui *UI) gjson.Result {
-	client := NewClient(ui)
-	newAddr, err := client.Call("newaddr")
-	if err != nil {
-		log.Fatal("newaddr error: " + err.Error())
-	}
-	return newAddr
+
+	return call(ui, "newaddr")
+
+}
+func getInvoices(ui *UI) gjson.Result {
+
+	return call(ui, "listinvoices")
+
 }
 func getInvoice(ui *UI, params map[string]interface{}) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("invoice ")
-	invoice, err := client.Call("invoice", params)
-	if err != nil {
-		ui.log.Warn("invoice error: " + err.Error())
-	}
+	invoice := call(ui, "invoice", params)
+
 	ui.log.Ok("OK\n")
 	ui.log.Info("bolt11: [white]" + invoice.Get("bolt11").String() + "\n")
 	ui.log.Info("payment_hash: [white]" + invoice.Get("payment_hash").String() + "\n")
@@ -99,111 +100,52 @@ func getNode(ui *UI, id string) Node {
 		return n
 	}
 
-	client := NewClient(ui)
-
-	ui.log.Info("listnodes [white]" + id + " ")
-	res, err := client.Call("listnodes", id)
-	if err != nil {
-		ui.log.Warn("error: " + err.Error() + "\n")
-	}
-	ui.log.Ok("OK\n")
+	results := call(ui, "listnodes", id)
 
 	node := Node{
-		id:    res.Get("nodes.0.id").String(),
-		alias: res.Get("nodes.0.alias").String(),
-		color: res.Get("nodes.0.color").String(),
+		id:    results.Get("nodes.0.id").String(),
+		alias: results.Get("nodes.0.alias").String(),
+		color: results.Get("nodes.0.color").String(),
 	}
 	NodeCache[id] = node
 	return NodeCache[id]
 
 }
+func listChannels(ui *UI) gjson.Result {
+
+	return call(ui, "listchannels")
+
+}
 func getChannel(ui *UI, chanID string) gjson.Result {
-	client := NewClient(ui)
 
-	channel, err := client.Call("listchannels", chanID)
+	return call(ui, "listchannels", chanID)
 
-	if err != nil {
-		log.Fatal("listchannels error: " + err.Error())
-	}
-
-	return channel
 }
 
 func getForwards(ui *UI, params map[string]interface{}) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("listforwards ")
+	return call(ui, "listforwards", params)
 
-	forwards, err := client.Call("listforwards", params)
-
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-
-	return forwards
 }
 
 func getFunds(ui *UI, spent bool) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("listfunds ")
+	return call(ui, "listfunds", spent)
 
-	funds, err := client.Call("listfunds", spent)
-
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-
-	return funds
 }
 
 func getTransactions(ui *UI) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("listtransactions ")
+	return call(ui, "listtransactions")
 
-	transactions, err := client.Call("listtransactions")
-
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-
-	return transactions
 }
 func getPays(ui *UI) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("listpays ")
-	pays, err := client.Call("listpays")
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-	return pays
+	return call(ui, "listpays")
 }
 
 func decodePay(ui *UI, bolt11 string) gjson.Result {
-	client := NewClient(ui)
 
-	ui.log.Info("decodepay ")
-	decoded, err := client.Call("decodepay", bolt11)
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-	return decoded
-}
-func getInvoices(ui *UI) gjson.Result {
-	client := NewClient(ui)
+	return call(ui, "decodepay", bolt11)
 
-	ui.log.Info("listinvoices ")
-	invoices, err := client.Call("listinvoices")
-	if err != nil {
-		ui.log.Warn("error: " + err.Error())
-	}
-	ui.log.Ok("OK\n")
-	return invoices
 }
