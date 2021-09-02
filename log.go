@@ -19,6 +19,7 @@ func NewLog() *Log {
 	v.SetDynamicColors(true)
 	v.SetBorderColor(MainColor)
 	v.SetTextColor(TextColor)
+	v.SetScrollable(false)
 	log := &Log{
 		view: v,
 		buf:  []string{"", "", "", "", ""},
@@ -39,6 +40,7 @@ func (l *Log) Warn(message string) {
 func (l *Log) Ok(message string) {
 	l.c <- "[green]" + message
 }
+
 func (l *Log) Start() {
 	for m := range l.c {
 		fmt.Fprintf(l.view, "%s", m)
