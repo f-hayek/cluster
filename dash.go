@@ -21,7 +21,7 @@ type InfoLine struct {
 type InfoColumn struct {
 	labelColor string
 	valueColor string
-	rows []*InfoLine
+	rows       []*InfoLine
 	topPadding int
 }
 
@@ -32,7 +32,7 @@ func NewInfoColumn(labelColor, valueColor string) *InfoColumn {
 	c := &InfoColumn{
 		labelColor: labelColor,
 		valueColor: valueColor,
-		rows: nil,
+		rows:       nil,
 		topPadding: 1,
 	}
 	return c
@@ -42,7 +42,7 @@ func (ic *InfoColumn) AddRow(label, value string) *InfoColumn {
 	return ic
 }
 func (ic *InfoColumn) Print(w io.Writer) {
-	for i := 0; i < ic.topPadding; i++  {
+	for i := 0; i < ic.topPadding; i++ {
 		fmt.Fprint(w, "\n")
 	}
 	for _, row := range ic.rows {
@@ -51,9 +51,9 @@ func (ic *InfoColumn) Print(w io.Writer) {
 }
 
 type Activity struct {
-	date time.Time
-	amount int64
-	operation string
+	date        time.Time
+	amount      int64
+	operation   string
 	description string
 }
 
@@ -117,9 +117,9 @@ func dashPage(ui *UI) tview.Primitive {
 	ic.AddRow("Node pubkey", info.Get("id").String())
 	ic.AddRow("Network", info.Get("network").String())
 	ic.AddRow("Blockheight", info.Get("blockheight").String())
-	ic.AddRow("Bound to", info.Get("binding.0.address").String() + ":" + info.Get("binding.0.port").String())
+	ic.AddRow("Bound to", info.Get("binding.0.address").String()+":"+info.Get("binding.0.port").String())
 	for _, announce := range info.Get("address").Array() {
-		ic.AddRow("Announce " + announce.Get("type").String(), announce.Get("address").String() + ":" + announce.Get("port").String())
+		ic.AddRow("Announce "+announce.Get("type").String(), announce.Get("address").String()+":"+announce.Get("port").String())
 	}
 	ic.AddRow("Peers", info.Get("num_peers").String())
 	activeChannels := info.Get("num_active_channels").String()
@@ -137,8 +137,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	collectedFees := info.Get("msatoshi_fees_collected").Int() / 1000
 
-	ic.AddRow("Fees collected (sats)", "[yellow]" + formatSats(collectedFees))
-
+	ic.AddRow("Fees collected (sats)", "[yellow]"+formatSats(collectedFees))
 
 	// Available Funds
 	fundsPane := tview.NewTextView()
@@ -151,7 +150,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	spentFees := calculateSpentFees(transactions, funds)
 
-	ic.AddRow("Fees spent on-chain", "[yellow]" + formatSats(spentFees))
+	ic.AddRow("Fees spent on-chain", "[yellow]"+formatSats(spentFees))
 	profitLoss := collectedFees - spentFees
 	var plPrefix string
 	if profitLoss > 0 {
@@ -159,7 +158,7 @@ func dashPage(ui *UI) tview.Primitive {
 	} else {
 		plPrefix = "[red]"
 	}
-	ic.AddRow("Profit/Loss", plPrefix + formatSats(profitLoss))
+	ic.AddRow("Profit/Loss", plPrefix+formatSats(profitLoss))
 	ic.Print(infoPane)
 
 	fc := NewInfoColumn("[deepskyblue]", "[yellow]")
@@ -186,14 +185,13 @@ func dashPage(ui *UI) tview.Primitive {
 		maxChan = math.Max(float64(chanSize), maxChan)
 	}
 
-	fc.AddRow("On-chain capacity", formatSats(onChainFunds) + " [white]in [yellow]" + fmt.Sprintf("%d [white]UTXOs", numUtxo))
-	fc.AddRow("Outbound LN capacity", formatSats(outboundFunds) + " [white]in [yellow]" + fmt.Sprintf("%s [white]channels", activeChannels))
-	fc.AddRow("Total node worth", formatSats(onChainFunds + outboundFunds))
-	fc.AddRow("Inbound LN capacity", formatSats(totalChannelFunds - outboundFunds))
+	fc.AddRow("On-chain capacity", formatSats(onChainFunds)+" [white]in [yellow]"+fmt.Sprintf("%d [white]UTXOs", numUtxo))
+	fc.AddRow("Outbound LN capacity", formatSats(outboundFunds)+" [white]in [yellow]"+fmt.Sprintf("%s [white]channels", activeChannels))
+	fc.AddRow("Total node worth", formatSats(onChainFunds+outboundFunds))
+	fc.AddRow("Inbound LN capacity", formatSats(totalChannelFunds-outboundFunds))
 	fc.AddRow("Smallest channel", formatSats(int64(minChan)))
 	fc.AddRow("Biggest channel", formatSats(int64(maxChan)))
 	fc.Print(fundsPane)
-
 
 	// Current fees
 
@@ -204,17 +202,16 @@ func dashPage(ui *UI) tview.Primitive {
 	rates := getFeerates(ui)
 
 	fec := NewInfoColumn("[deepskyblue]", "[orange]")
-	fec.AddRow("Opening", formatSats(rates.Get("perkb.opening").Int() / 1024) + " sat/vB")
-	fec.AddRow("Mutual close", "[green]" + formatSats(rates.Get("perkb.mutual_close").Int() / 1024) + " sat/vB")
-	fec.AddRow("Unilateral close", formatSats(rates.Get("perkb.unilateral_close").Int() / 1024) + " sat/vB")
-	fec.AddRow("Delayed to us", formatSats(rates.Get("perkb.delayed_to_us").Int() / 1024) + " sat/vB")
-	fec.AddRow("HTLC resolution", formatSats(rates.Get("perkb.htlc_resolution").Int() / 1024) + " sat/vB")
-	fec.AddRow("Penalty", formatSats(rates.Get("perkb.penalty").Int() / 1024) + " sat/vB")
-	fec.AddRow("Min acceptable", formatSats(rates.Get("perkb.min_acceptable").Int() / 1024) + " sat/vB")
-	fec.AddRow("Max acceptable", formatSats(rates.Get("perkb.max_acceptable").Int() / 1024) + " sat/vB")
+	fec.AddRow("Opening", formatSats(rates.Get("perkb.opening").Int()/1024)+" sat/vB")
+	fec.AddRow("Mutual close", "[green]"+formatSats(rates.Get("perkb.mutual_close").Int()/1024)+" sat/vB")
+	fec.AddRow("Unilateral close", formatSats(rates.Get("perkb.unilateral_close").Int()/1024)+" sat/vB")
+	fec.AddRow("Delayed to us", formatSats(rates.Get("perkb.delayed_to_us").Int()/1024)+" sat/vB")
+	fec.AddRow("HTLC resolution", formatSats(rates.Get("perkb.htlc_resolution").Int()/1024)+" sat/vB")
+	fec.AddRow("Penalty", formatSats(rates.Get("perkb.penalty").Int()/1024)+" sat/vB")
+	fec.AddRow("Min acceptable", formatSats(rates.Get("perkb.min_acceptable").Int()/1024)+" sat/vB")
+	fec.AddRow("Max acceptable", formatSats(rates.Get("perkb.max_acceptable").Int()/1024)+" sat/vB")
 
 	fec.Print(feesPane)
-
 
 	// Recent activityTable
 
@@ -239,7 +236,7 @@ func dashPage(ui *UI) tview.Primitive {
 	// Do not allow to select the header
 	activityTable.SetSelectionChangedFunc(func(row, column int) {
 		if row < rowOffset {
-			activityTable.Select(row + 1, column)
+			activityTable.Select(row+1, column)
 		}
 	})
 
@@ -248,44 +245,58 @@ func dashPage(ui *UI) tview.Primitive {
 	// pays
 	pays := getPays(ui).Get("pays").Array()
 
+	month := 24 * time.Hour * 31
+
+	lastMonth := time.Now().Add(-month)
+
 	for _, pay := range pays {
-		// only completed pays
-		if pay.Get("status").String() == "complete" {
-			// date
-			date := time.Unix(pay.Get("created_at").Int(), 0)
-			// amount
-			amount, _ := Mstoi(pay.Get("amount_sent_msat").String())
+		// date
+		date := time.Unix(pay.Get("created_at").Int(), 0)
 
-			// operation
-			destination := pay.Get("destination").String()
-			payee := getNode(ui, destination)
-			var operation string
-			if destination == info.Get("id").String() {
-				operation = "[greenyellow]rebalance"
-			} else {
-				operation = "[darkviolet]sent to " + payee.alias
+		if date.After(lastMonth) {
+
+			status := pay.Get("status").String()
+			// only completed or pending pays for the past week
+
+			if status == "complete" || status == "pending" {
+				// amount
+				amount, _ := Mstoi(pay.Get("amount_sent_msat").String())
+
+				// operation
+				destination := pay.Get("destination").String()
+				payee := getNode(ui, destination)
+				var operation string
+				if destination == info.Get("id").String() {
+					operation = "[greenyellow]rebalance"
+				} else {
+					if status == "pending" {
+						operation = "[violet]pending to " + payee.alias
+					} else {
+						operation = "[darkviolet]sent to " + payee.alias
+					}
+				}
+
+				// description
+				bolt11 := pay.Get("bolt11").String()
+				var bolt11Decoded gjson.Result
+				var description string
+
+				if bolt11 != "" {
+					bolt11Decoded = decodePay(ui, bolt11)
+					description = bolt11Decoded.Get("description").String()
+				} else {
+					description = pay.Get("label").String()
+				}
+
+				description = " " + formatDesc(description)
+
+				activities = append(activities, &Activity{
+					date,
+					amount / 1000,
+					operation,
+					description,
+				})
 			}
-
-			// description
-			bolt11 := pay.Get("bolt11").String()
-			var bolt11Decoded gjson.Result
-			var description string
-
-			if bolt11 != "" {
-				bolt11Decoded = decodePay(ui, bolt11)
-				description = bolt11Decoded.Get("description").String()
-			} else {
-				description = pay.Get("label").String()
-			}
-
-			description = " " + formatDesc(description)
-
-			activities = append(activities, &Activity{
-				date,
-				amount / 1000,
-				operation,
-				description,
-			})
 		}
 	}
 
@@ -294,10 +305,11 @@ func dashPage(ui *UI) tview.Primitive {
 	invoices := getInvoices(ui).Get("invoices").Array()
 
 	for _, invoice := range invoices {
-		// only paid invoices
-		if invoice.Get("status").String() == "paid" {
-			// date
-			date := time.Unix(invoice.Get("paid_at").Int(), 0)
+		// only paid invoices for the past month
+		paidAt := invoice.Get("paid_at").Int()
+
+		date := time.Unix(paidAt, 0)
+		if date.After(lastMonth) {
 
 			// amount
 			amount := invoice.Get("msatoshi_received").Int()
@@ -318,13 +330,12 @@ func dashPage(ui *UI) tview.Primitive {
 			})
 		}
 	}
-	// activities := pays + invoices
+
 	sort.Slice(activities, func(i, j int) bool {
 		a1 := activities[i]
 		a2 := activities[j]
 		return a2.date.Before(a1.date)
 	})
-
 
 	for idx, activity := range activities {
 
@@ -339,9 +350,9 @@ func dashPage(ui *UI) tview.Primitive {
 			amountColor = "[red]"
 		}
 		activityTable.SetCell(idx+rowOffset, 2,
-			tview.NewTableCell(amountColor + formatSats(activity.amount)).SetAlign(tview.AlignRight))
+			tview.NewTableCell(amountColor+formatSats(activity.amount)).SetAlign(tview.AlignRight))
 		activityTable.SetCell(idx+rowOffset, 3,
-			tview.NewTableCell("[white]" + activity.description).SetAlign(tview.AlignLeft))
+			tview.NewTableCell("[white]"+activity.description).SetAlign(tview.AlignLeft))
 	}
 
 	dash := tview.NewFlex()
