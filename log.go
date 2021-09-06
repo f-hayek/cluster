@@ -14,10 +14,10 @@ type Log struct {
 func NewLog() *Log {
 
 	v := tview.NewTextView()
-	v.SetTitle(" Activity ")
-	v.SetBorder(true)
+	v.SetTitle("                                                               Activity ")
+	v.SetBorder(false)
 	v.SetDynamicColors(true)
-	v.SetBorderColor(MainColor)
+	v.SetBorderColor(BorderColor)
 	v.SetTextColor(TextColor)
 	v.SetScrollable(false)
 	log := &Log{
@@ -43,6 +43,6 @@ func (l *Log) Ok(message string) {
 
 func (l *Log) Start() {
 	for m := range l.c {
-		fmt.Fprintf(l.view, "%s", m)
+		fmt.Fprintf(l.view,  "%s", m)
 	}
 }

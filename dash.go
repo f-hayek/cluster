@@ -107,7 +107,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	// Node Info
 	infoPane := tview.NewTextView()
-	infoPane.SetBorder(true).SetBorderColor(MainColor).SetTitle(" Node Info ")
+	infoPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Node Info ")
 	infoPane.SetDynamicColors(true)
 
 	info := getInfo(ui)
@@ -142,7 +142,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	// Available Funds
 	fundsPane := tview.NewTextView()
-	fundsPane.SetBorder(true).SetBorderColor(MainColor).SetTitle(" Available funds ")
+	fundsPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Available funds ")
 	fundsPane.SetDynamicColors(true)
 
 	funds := getFunds(ui, true) // list both confirmed and spent funds
@@ -197,7 +197,7 @@ func dashPage(ui *UI) tview.Primitive {
 	// Current fees
 
 	feesPane := tview.NewTextView()
-	feesPane.SetBorder(true).SetBorderColor(MainColor).SetTitle(" Current fee rates ")
+	feesPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Current fee rates ")
 	feesPane.SetDynamicColors(true)
 
 	rates := getFeerates(ui)
@@ -217,7 +217,7 @@ func dashPage(ui *UI) tview.Primitive {
 	// Recent activityTable
 
 	activityTable := NewTable()
-	activityTable.SetBorder(true).SetBorderColor(MainColor)
+	activityTable.SetBorder(true).SetBorderColor(BorderColor)
 	activityTable.SetTitle(" Recent activity ")
 
 	activityTable.AddColumnHeader("\n[bold]date", tview.AlignCenter)

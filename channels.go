@@ -202,9 +202,10 @@ func channelsPage(ui *UI) *Table {
 			"Enter - Go to channel details page  ",
 			"o     - Open new channel(s)         ",
 			"c     - Close selected channel      ",
-			"s     - Sort channels by            ",
-			"h     - Toggle this help screen     ",
-			"ESC   - Go back                     ",
+			"f     - Set channel fees            ",
+			"s     - Sort channels               ",
+			"h     - Toggle help                 ",
+			"ESC   - Focus menu pane             ",
 			}
 			if ui.HasPage("help") {
 				ui.DeletePage("help")
@@ -488,7 +489,7 @@ func (ui *UI) NewChannelSortPage() tview.Primitive {
 	form := tview.NewForm()
 	form.SetBorder(true)
 	form.SetTitle(" Sort channels by ")
-	form.SetBorderColor(MainColor)
+	form.SetBorderColor(BorderColor)
 	options := []string{
 		"Channel balance",
 		"Inbound liquidity",

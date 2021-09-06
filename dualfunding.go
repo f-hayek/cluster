@@ -9,7 +9,7 @@ func dualFundingPage(ui *UI) tview.Primitive {
 
 	// Dual Funding Info
 	infoPane := tview.NewTextView()
-	infoPane.SetBorder(true).SetBorderColor(MainColor).SetTitle(" Dual Funding ")
+	infoPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Dual Funding ")
 	infoPane.SetDynamicColors(true)
 
 
@@ -35,7 +35,7 @@ func dualFundingPage(ui *UI) tview.Primitive {
 	ic.Print(infoPane)
 
 	liquidityTable := NewTable()
-	liquidityTable.SetBorder(true).SetBorderColor(MainColor)
+	liquidityTable.SetBorder(true).SetBorderColor(BorderColor)
 	liquidityTable.SetTitle(" Liquidity Ads ")
 
 	liquidityTable.AddColumnHeader("\n[greenyellow]alias", tview.AlignRight)

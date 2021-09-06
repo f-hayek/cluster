@@ -8,10 +8,9 @@ import (
 
 const (
 	MainColor          = tcell.ColorOrange
+	BorderColor        = tcell.ColorBlanchedAlmond
 	TextColor          = tcell.ColorWhite
 	TopbarTextColor    = tcell.ColorBlack
-	StatusbarBgColor   = tcell.ColorBlack
-	StatusbarTextColor = tcell.ColorWhite
 )
 
 type UI struct {
@@ -30,14 +29,6 @@ func NewTopBar() tview.Primitive {
 	topbar.SetTextColor(TopbarTextColor)
 	topbar.SetBackgroundColor(MainColor)
 	return topbar
-}
-func NewStatusBar() tview.Primitive {
-	bar := tview.NewTextView()
-	bar.SetBorder(false)
-	bar.SetText("  [j/k] Down/Up    [G/g] Bottom/top    [Enter] Details    [ESC] Back")
-	bar.SetTextColor(StatusbarTextColor)
-	bar.SetBackgroundColor(StatusbarBgColor)
-	return bar
 }
 
 func NewMenu(ui *UI) *tview.List {
@@ -75,9 +66,9 @@ func NewMenu(ui *UI) *tview.List {
 					"(p)   - Pay an invoice                      ",
 					"(r)   - Receive sats (create an invoice)    ",
 					"(c)   - Show channels                       ",
-					"(h)   - Toggle this help screen             ",
-					"(ESC) - Go back                             ",
-					"(q)   - Quit the application                "}
+					"(h)   - Toggle help                         ",
+					"(ESC) - Go back to the menu                 ",
+					"(q)   - Quit the application (menu only)    "}
 				ui.AddPage("help", ui.NewHelpPage(help), true, true)
 				ui.pages.SwitchToPage("help")
 			}
@@ -86,7 +77,7 @@ func NewMenu(ui *UI) *tview.List {
 			ui.app.Stop()
 		})
 	menu.SetBorder(true)
-	menu.SetBorderColor(MainColor)
+	menu.SetBorderColor(BorderColor)
 	menu.SetTitle(" Menu ")
 
 	return menu
@@ -95,7 +86,7 @@ func NewMenu(ui *UI) *tview.List {
 
 func (ui *UI) NewHelpPage(help []string) tview.Primitive {
 	tv := tview.NewTextView()
-	tv.SetBorderColor(MainColor)
+	tv.SetBorderColor(BorderColor)
 	tv.SetBorder(true)
 	tv.SetTitle(" Keyboard Shortcuts ")
 	tv.SetDynamicColors(true)
@@ -152,7 +143,7 @@ func (ui *UI) SetupPages() *tview.Pages {
 func (ui *UI) NewLayout() tview.Primitive {
 	page := tview.NewGrid()
 	page.SetColumns(30, 0)
-	page.SetRows(1, 0, 1, 7)
+	page.SetRows(1, 0, 7)
 
 	topBar := NewTopBar()
 
@@ -161,13 +152,11 @@ func (ui *UI) NewLayout() tview.Primitive {
 	ui.log.view.SetChangedFunc(func() {
 		ui.app.ForceDraw()
 	})
-	status := NewStatusBar()
 
-	page.AddItem(topBar, 0, 0, 1, 2, 0, 0, true)
-	page.AddItem(ui.menu, 1, 0, 2, 1, 0, 0, false)
+	page.AddItem(topBar, 0, 0, 1, 2, 0, 0, false)
+	page.AddItem(ui.menu, 1, 0, 1, 1, 0, 0, true)
 	page.AddItem(ui.pages, 1, 1, 1, 1, 0, 0, false)
-	page.AddItem(status, 2, 1, 1, 1, 0, 0, false)
-	page.AddItem(ui.log.view, 3, 0, 1, 2, 0, 0, false)
+	page.AddItem(ui.log.view, 2, 0, 1, 2, 0, 0, false)
 	return page
 
 }
