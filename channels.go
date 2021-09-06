@@ -337,6 +337,7 @@ func getChannels(ui *UI) []Channel {
 		getInfo.Get("alias").String(),
 		getInfo.Get("color").String(),
 		getInfo.Get("blockheight").Int(),
+		nil,
 	}
 
 	ui.log.Info("listpeers ")
@@ -420,7 +421,7 @@ func getChannels(ui *UI) []Channel {
 
 		}
 		remoteNodeID := peer.Get("id").String()
-		remoteNode := getNode(ui, remoteNodeID)
+		remoteNode := listNode(ui, remoteNodeID)
 
 		var remoteAlias string
 

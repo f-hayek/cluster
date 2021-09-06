@@ -93,7 +93,42 @@ func getInvoice(ui *UI, params map[string]interface{}) gjson.Result {
 	return invoice
 
 }
-func getNode(ui *UI, id string) Node {
+
+func wrapNode(results gjson.Result) Node {
+	leaseFeeBaseMsat, err := Mstoi(results.Get("option_will_fund.lease_fee_base_msat").String())
+	skipOptionWillFund := false
+	if err != nil {
+		skipOptionWillFund = true
+	}
+	channelFeeMaxBaseMsat, err := Mstoi(results.Get("option_will_fund.channel_fee_max_base_msat").String())
+	if err != nil {
+		skipOptionWillFund = true
+	}
+
+	node := Node{
+		id:    results.Get("id").String(),
+		alias: results.Get("alias").String(),
+		color: results.Get("color").String(),
+	}
+	if !skipOptionWillFund {
+		leaseFeeBasis := results.Get("option_will_fund.lease_fee_basis").Int()
+		fundingWeight := results.Get("option_will_fund.funding_weight").Int()
+		channelFeeMaxProportionalThousandths := results.Get("option_will_fund.channel_fee_max_proportional_thousandths").Int()
+		compactLease := results.Get("option_will_fund.compact_lease").String()
+
+		node.optionWillFund = &OptionWillFund{
+			leaseFeeBaseMsat,
+			leaseFeeBasis,
+			fundingWeight,
+			channelFeeMaxBaseMsat,
+			channelFeeMaxProportionalThousandths,
+			compactLease,
+		}
+	}
+	return node
+}
+
+func listNode(ui *UI, id string) Node {
 
 	n, exists := NodeCache[id]
 	if exists {
@@ -102,14 +137,33 @@ func getNode(ui *UI, id string) Node {
 
 	results := call(ui, "listnodes", id)
 
-	node := Node{
-		id:    results.Get("nodes.0.id").String(),
-		alias: results.Get("nodes.0.alias").String(),
-		color: results.Get("nodes.0.color").String(),
-	}
+	node := wrapNode(results.Get("nodes.0"))
+
 	NodeCache[id] = node
 	return NodeCache[id]
 
+}
+
+func listNodes(ui *UI) []Node {
+	nodes := call(ui, "listnodes")
+
+	var results []Node
+	for _, data := range nodes.Get("nodes").Array() {
+		node := wrapNode(data)
+		results = append(results, node)
+		NodeCache[node.id] = node
+	}
+	return results
+}
+func listNodesThatWillFund(ui *UI) []Node {
+	var results []Node
+	nodes := listNodes(ui)
+	for _, node := range nodes {
+		if node.optionWillFund != nil {
+			results = append(results, node)
+		}
+	}
+	return results
 }
 func listChannels(ui *UI) gjson.Result {
 

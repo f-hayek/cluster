@@ -61,6 +61,11 @@ func NewMenu(ui *UI) *tview.List {
 			ui.pages.SwitchToPage("channels")
 			ui.SetFocus("channels")
 		}).
+		AddItem("Dual-funding / Liquidity Ads", "Dual-fund or find liquidity", 'l', func() {
+			ui.AddPage("dualfunding", dualFundingPage(ui), true, true)
+			ui.pages.SwitchToPage("dualfunding")
+			ui.SetFocus("dualfunding")
+		}).
 		AddItem("Help", "", 'h', func() {
 			if ui.HasPage("help") {
 				ui.DeletePage("help")
