@@ -53,6 +53,7 @@ func (ic *InfoColumn) Print(w io.Writer) {
 type Activity struct {
 	date        time.Time
 	amount      int64
+	fees        int64
 	operation   string
 	description string
 }
@@ -222,8 +223,9 @@ func dashPage(ui *UI) tview.Primitive {
 	activityTable.AddColumnHeader("\n[bold]date", tview.AlignCenter)
 	activityTable.AddColumnHeader("\noperation", tview.AlignRight)
 	activityTable.AddColumnHeader("\namount", tview.AlignRight)
+	activityTable.AddColumnHeader("\n[deepskyblue]fees\n[deepskyblue](sats)", tview.AlignRight)
 	activityTable.AddColumnHeader("\n description", tview.AlignLeft)
-	activityTable.Separator(20)
+	activityTable.Separator(16)
 
 	activityTable.SetDoneFunc(func(key tcell.Key) {
 		ui.FocusMenu()
@@ -260,11 +262,12 @@ func dashPage(ui *UI) tview.Primitive {
 
 			if status == "complete" || status == "pending" {
 				// amount
-				amount, _ := Mstoi(pay.Get("amount_sent_msat").String())
+				amount, _ := Mstoi(pay.Get("amount_msat").String())
+				amountSent, _ := Mstoi(pay.Get("amount_sent_msat").String())
 
 				// operation
 				destination := pay.Get("destination").String()
-				payee := getNode(ui, destination)
+				payee := listNode(ui, destination)
 				var operation string
 				if destination == info.Get("id").String() {
 					operation = "[greenyellow]rebalance"
@@ -293,6 +296,7 @@ func dashPage(ui *UI) tview.Primitive {
 				activities = append(activities, &Activity{
 					date,
 					amount / 1000,
+					(amountSent - amount) / 1000,
 					operation,
 					description,
 				})
@@ -325,6 +329,7 @@ func dashPage(ui *UI) tview.Primitive {
 			activities = append(activities, &Activity{
 				date,
 				amount / 1000,
+				0,
 				operation,
 				description,
 			})
@@ -336,6 +341,7 @@ func dashPage(ui *UI) tview.Primitive {
 		a2 := activities[j]
 		return a2.date.Before(a1.date)
 	})
+	totalFees := int64(0)
 
 	for idx, activity := range activities {
 
@@ -349,11 +355,29 @@ func dashPage(ui *UI) tview.Primitive {
 		} else {
 			amountColor = "[red]"
 		}
+		var feesFormatted string
+		if activity.fees == 0 {
+			feesFormatted = ""
+		} else {
+			feesFormatted = "[deepskyblue]" + formatSats(activity.fees)
+		}
 		activityTable.SetCell(idx+rowOffset, 2,
 			tview.NewTableCell(amountColor+formatSats(activity.amount)).SetAlign(tview.AlignRight))
 		activityTable.SetCell(idx+rowOffset, 3,
+			tview.NewTableCell(feesFormatted).SetAlign(tview.AlignRight))
+		activityTable.SetCell(idx+rowOffset, 4,
 			tview.NewTableCell("[white]"+activity.description).SetAlign(tview.AlignLeft))
+
+		totalFees += activity.fees
 	}
+
+	activityTable.Separator(16)
+
+	currentRow := activityTable.GetRowCount()
+
+	// Total inbound
+	activityTable.SetCell(currentRow, 3,
+		tview.NewTableCell("[deepskyblue]" + formatSats(totalFees)).SetAlign(tview.AlignRight))
 
 	dash := tview.NewFlex()
 	dashLeft := tview.NewFlex()
