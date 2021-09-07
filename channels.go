@@ -141,7 +141,7 @@ func channelsPage(ui *UI) *Table {
 	t := NewTable()
 	t.SetTitle(" Channels ")
 	t.SetBorder(true)
-	t.SetBorderColor(MainColor)
+	t.SetBorderColor(BorderColor)
 	t.SetSelectable(true, false)
 
 	t.AddColumnHeader("\n[bold]inbound", tview.AlignRight)
@@ -187,6 +187,14 @@ func channelsPage(ui *UI) *Table {
 	// Keyboard handler
 	t.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
+		case 'f':
+			if ui.HasPage("channelFees") {
+				ui.DeletePage("channelFees")
+			}
+			currentRow, _ := t.GetSelection()
+			channel := channels[currentRow - rowOffset]
+			ui.AddPage("channelFees", ui.NewChannelFeesPage(channel), true, true)
+			ui.SetFocus("channelFees")
 		case 's':
 			if ui.HasPage("channelSort") {
 				ui.DeletePage("channelSort")
@@ -484,6 +492,53 @@ func getChannels(ui *UI) []Channel {
 
 }
 
+func (ui *UI) NewChannelFeesPage(channel Channel) tview.Primitive {
+	form := tview.NewForm()
+	form.SetBorder(true)
+	form.SetTitle(" Set channel fees ")
+	form.SetBorderColor(BorderColor)
+	form.AddInputField("Base fee", strconv.FormatInt(channel.localBaseFee, 10), 20, tview.InputFieldInteger, nil)
+	form.AddInputField("Fee rate", strconv.FormatInt(channel.localFeeRate, 10), 20, tview.InputFieldInteger, nil)
+	form.AddButton("Set fees", func() {
+		baseFeeField := form.GetFormItemByLabel("Base fee").(*tview.InputField)
+		feeRateField := form.GetFormItemByLabel("Fee rate").(*tview.InputField)
+
+		baseFee, err := strconv.Atoi(baseFeeField.GetText())
+		if err != nil {
+			ui.log.Warn("Incorrect base fee: " + err.Error() + "\n")
+		}
+
+		feeRate, err := strconv.Atoi(feeRateField.GetText())
+		if err != nil {
+			ui.log.Warn("Incorrect fee rate: " + err.Error() + "\n")
+		}
+
+		results := setChannelFee(ui, channel.shortChannelID, baseFee, feeRate)
+		// If the response contains code field it means something went wrong
+		nodeID := results.Get("channels.0.peer_id").String()
+		if nodeID != "" {
+			node := listNode(ui, nodeID)
+			ui.log.Info(fmt.Sprintf("Channel with %s: ", node.alias))
+			ui.log.Ok(fmt.Sprintf("Base fee: %d, Fee rate: %d\n", baseFee, feeRate))
+			ui.pages.HidePage("channelFees")
+			ui.AddPage("channels", channelsPage(ui), true, true)
+			ui.pages.SwitchToPage("channels")
+			ui.SetFocus("channels")
+		} else {
+			code := results.Get("code").Int()
+			msg := results.Get("message").String()
+			ui.log.Warn(fmt.Sprintf("Error when setting fees: (%d) %s\n", code, msg))
+		}
+
+	})
+
+	form.AddButton("Cancel", func() {
+		ui.pages.HidePage("channelFees")
+		ui.SetFocus("channels")
+	})
+
+	return ui.Modal(form, 38, 10)
+}
 func (ui *UI) NewChannelSortPage() tview.Primitive {
 
 	form := tview.NewForm()
@@ -523,6 +578,9 @@ func (ui *UI) NewChannelSortPage() tview.Primitive {
 		}
 	})
 
-	return ui.Modal(form, 40, 10)
-
+	form.SetCancelFunc(func() {
+		ui.pages.HidePage("channelSort")
+		ui.SetFocus("channels")
+	})
+	return  ui.Modal(form, 40, 10)
 }

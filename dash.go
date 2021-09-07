@@ -223,7 +223,7 @@ func dashPage(ui *UI) tview.Primitive {
 	activityTable.AddColumnHeader("\n[bold]date", tview.AlignCenter)
 	activityTable.AddColumnHeader("\noperation", tview.AlignRight)
 	activityTable.AddColumnHeader("\namount", tview.AlignRight)
-	activityTable.AddColumnHeader("\n[deepskyblue]fees\n[deepskyblue](sats)", tview.AlignRight)
+	activityTable.AddColumnHeader("\nfees\n(sats)", tview.AlignRight)
 	activityTable.AddColumnHeader("\n description", tview.AlignLeft)
 	activityTable.Separator(16)
 
@@ -359,7 +359,7 @@ func dashPage(ui *UI) tview.Primitive {
 		if activity.fees == 0 {
 			feesFormatted = ""
 		} else {
-			feesFormatted = "[deepskyblue]" + formatSats(activity.fees)
+			feesFormatted = "[red]" + formatSats(activity.fees)
 		}
 		activityTable.SetCell(idx+rowOffset, 2,
 			tview.NewTableCell(amountColor+formatSats(activity.amount)).SetAlign(tview.AlignRight))
@@ -377,7 +377,7 @@ func dashPage(ui *UI) tview.Primitive {
 
 	// Total inbound
 	activityTable.SetCell(currentRow, 3,
-		tview.NewTableCell("[deepskyblue]" + formatSats(totalFees)).SetAlign(tview.AlignRight))
+		tview.NewTableCell("[red]" + formatSats(totalFees)).SetAlign(tview.AlignRight))
 
 	dash := tview.NewFlex()
 	dashLeft := tview.NewFlex()

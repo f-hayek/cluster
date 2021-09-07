@@ -203,3 +203,12 @@ func decodePay(ui *UI, bolt11 string) gjson.Result {
 	return call(ui, "decodepay", bolt11)
 
 }
+
+func setChannelFee(ui *UI, scid string, base, rate int) gjson.Result {
+	params := map[string]interface{} {
+		"id": scid,
+		"base": base,
+		"ppm": rate,
+	}
+	return call(ui, "setchannelfee", params)
+}
