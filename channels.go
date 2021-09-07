@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/tidwall/gjson"
 	"math"
 	"sort"
 	"strconv"
@@ -499,9 +500,11 @@ func (ui *UI) NewChannelFeesPage(channel Channel) tview.Primitive {
 	form.SetBorderColor(BorderColor)
 	form.AddInputField("Base fee", strconv.FormatInt(channel.localBaseFee, 10), 20, tview.InputFieldInteger, nil)
 	form.AddInputField("Fee rate", strconv.FormatInt(channel.localFeeRate, 10), 20, tview.InputFieldInteger, nil)
+	form.AddCheckbox("Apply to all channels", false, nil)
 	form.AddButton("Set fees", func() {
 		baseFeeField := form.GetFormItemByLabel("Base fee").(*tview.InputField)
 		feeRateField := form.GetFormItemByLabel("Fee rate").(*tview.InputField)
+		allChannelsField := form.GetFormItemByLabel("Apply to all channels").(*tview.Checkbox)
 
 		baseFee, err := strconv.Atoi(baseFeeField.GetText())
 		if err != nil {
@@ -513,7 +516,14 @@ func (ui *UI) NewChannelFeesPage(channel Channel) tview.Primitive {
 			ui.log.Warn("Incorrect fee rate: " + err.Error() + "\n")
 		}
 
-		results := setChannelFee(ui, channel.shortChannelID, baseFee, feeRate)
+		var results gjson.Result
+		if allChannelsField.IsChecked() {
+			// set for all channels
+			results = setChannelFee(ui, "all", baseFee, feeRate)
+		} else {
+			results = setChannelFee(ui, channel.shortChannelID, baseFee, feeRate)
+		}
+
 		// If the response contains code field it means something went wrong
 		nodeID := results.Get("channels.0.peer_id").String()
 		if nodeID != "" {
@@ -537,7 +547,7 @@ func (ui *UI) NewChannelFeesPage(channel Channel) tview.Primitive {
 		ui.SetFocus("channels")
 	})
 
-	return ui.Modal(form, 38, 10)
+	return ui.Modal(form, 38, 11)
 }
 func (ui *UI) NewChannelSortPage() tview.Primitive {
 
