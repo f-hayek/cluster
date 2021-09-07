@@ -194,31 +194,42 @@ func dashPage(ui *UI) tview.Primitive {
 	fc.AddRow("Biggest channel", formatSats(int64(maxChan)))
 	fc.Print(fundsPane)
 
-	// Current fees
+	// Off-chain fees
+	// On-chain fees
+	offChainFeesPane := tview.NewTextView()
+	offChainFeesPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Default off-chain channel fees  ")
+	offChainFeesPane.SetDynamicColors(true)
 
-	feesPane := tview.NewTextView()
-	feesPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Current fee rates ")
-	feesPane.SetDynamicColors(true)
+	l2Fees := NewInfoColumn("[deepskyblue]", "[orange]")
+	l2Fees.AddRow("Default base fee", formatSats(config.Get("fee-base").Int()))
+	l2Fees.AddRow("Default fee rate", formatSats(config.Get("fee-per-satoshi").Int()))
+
+	l2Fees.Print(offChainFeesPane)
+
+	// On-chain fees
+	onChainFeesPane := tview.NewTextView()
+	onChainFeesPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Current on-chain fee rates ")
+	onChainFeesPane.SetDynamicColors(true)
 
 	rates := getFeerates(ui)
 
-	fec := NewInfoColumn("[deepskyblue]", "[orange]")
-	fec.AddRow("Opening", formatSats(rates.Get("perkb.opening").Int()/1024)+" sat/vB")
-	fec.AddRow("Mutual close", "[green]"+formatSats(rates.Get("perkb.mutual_close").Int()/1024)+" sat/vB")
-	fec.AddRow("Unilateral close", formatSats(rates.Get("perkb.unilateral_close").Int()/1024)+" sat/vB")
-	fec.AddRow("Delayed to us", formatSats(rates.Get("perkb.delayed_to_us").Int()/1024)+" sat/vB")
-	fec.AddRow("HTLC resolution", formatSats(rates.Get("perkb.htlc_resolution").Int()/1024)+" sat/vB")
-	fec.AddRow("Penalty", formatSats(rates.Get("perkb.penalty").Int()/1024)+" sat/vB")
-	fec.AddRow("Min acceptable", formatSats(rates.Get("perkb.min_acceptable").Int()/1024)+" sat/vB")
-	fec.AddRow("Max acceptable", formatSats(rates.Get("perkb.max_acceptable").Int()/1024)+" sat/vB")
+	l1Fees := NewInfoColumn("[deepskyblue]", "[orange]")
+	l1Fees.AddRow("Opening", formatSats(rates.Get("perkb.opening").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Mutual close", "[green]"+formatSats(rates.Get("perkb.mutual_close").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Unilateral close", formatSats(rates.Get("perkb.unilateral_close").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Delayed to us", formatSats(rates.Get("perkb.delayed_to_us").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("HTLC resolution", formatSats(rates.Get("perkb.htlc_resolution").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Penalty", formatSats(rates.Get("perkb.penalty").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Min acceptable", formatSats(rates.Get("perkb.min_acceptable").Int()/1024)+" sat/vB")
+	l1Fees.AddRow("Max acceptable", formatSats(rates.Get("perkb.max_acceptable").Int()/1024)+" sat/vB")
 
-	fec.Print(feesPane)
+	l1Fees.Print(onChainFeesPane)
 
 	// Recent activityTable
 
 	activityTable := NewTable()
 	activityTable.SetBorder(true).SetBorderColor(BorderColor)
-	activityTable.SetTitle(" Recent activity ")
+	activityTable.SetTitle(" Recent LN activity ")
 
 	activityTable.AddColumnHeader("\n[bold]date", tview.AlignCenter)
 	activityTable.AddColumnHeader("\noperation", tview.AlignRight)
@@ -385,6 +396,11 @@ func dashPage(ui *UI) tview.Primitive {
 	dashLeft.SetDirection(tview.FlexRow)
 	dashLeft.AddItem(infoPane, 0, 2, false)
 	dashLeft.AddItem(fundsPane, 0, 1, false)
+	feesPane := tview.NewFlex()
+	feesPane.SetDirection(tview.FlexColumn)
+	feesPane.AddItem(offChainFeesPane, 0, 1, false)
+	feesPane.AddItem(onChainFeesPane, 0, 1, false)
+
 	dashLeft.AddItem(feesPane, 0, 1, false)
 
 	dash.AddItem(dashLeft, 0, 1, false)
