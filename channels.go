@@ -97,7 +97,7 @@ var sortFuncs = SortFuncs {
 		})
 		return channels
 	},
-	"Alias": func(channels []Channel) []Channel {
+	"Remote alias": func(channels []Channel) []Channel {
 		sort.Slice(channels, func(i, j int) bool {
 			c1 := channels[i]
 			c2 := channels[j]
@@ -261,18 +261,19 @@ func channelsPage(ui *UI) *Table {
 
 		var aliasColor string
 		if channel.peerConnected {
-			if channel.opener == "local" {
+			switch channel.opener {
+			case "local":
 				aliasColor = "[greenyellow]"
-			} else {
+			case "remote":
 				aliasColor = "[darkviolet]"
 			}
 		} else {
-			if channel.opener == "local" {
+			switch channel.opener {
+			case "local":
 				aliasColor = "[#9DB27C]"
-			} else {
+			case "remote":
 				aliasColor = "[#71577C]"
 			}
-
 		}
 		lastForward := formatDaysSince(channel.lastForward)
 		var lastForwardFormatted string
