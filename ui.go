@@ -142,7 +142,7 @@ func (ui *UI) SetupPages() *tview.Pages {
 }
 func (ui *UI) NewLayout() tview.Primitive {
 	page := tview.NewGrid()
-	page.SetColumns(30, 0)
+	page.SetColumns(40, 0)
 	page.SetRows(1, 0, 7)
 
 	topBar := NewTopBar()

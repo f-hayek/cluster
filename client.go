@@ -5,6 +5,7 @@ import (
 	"github.com/fiatjaf/lightningd-gjson-rpc"
 	"github.com/tidwall/gjson"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,8 @@ type LnClient struct {
 
 var ln *LnClient
 var NodeCache = make(map[string]Node)
+var lastCacheLookup time.Time
+const cacheFor = time.Second * 60
 
 func NewClient(ui *UI) *LnClient {
 	if ln != nil {
@@ -106,7 +109,7 @@ func wrapNode(results gjson.Result) Node {
 	}
 
 	node := Node{
-		id:    results.Get("id").String(),
+		id:    results.Get("nodeid").String(),
 		alias: results.Get("alias").String(),
 		color: results.Get("color").String(),
 	}
@@ -144,15 +147,24 @@ func listNode(ui *UI, id string) Node {
 
 }
 
-func listNodes(ui *UI) []Node {
+func listNodes(ui *UI) (results []Node) {
+
+	// cache
+	if lastCacheLookup.After(time.Now().Add(- cacheFor)) {
+		for _, node := range NodeCache {
+			results = append(results, node)
+		}
+		return results
+	}
 	nodes := call(ui, "listnodes")
 
-	var results []Node
 	for _, data := range nodes.Get("nodes").Array() {
 		node := wrapNode(data)
 		results = append(results, node)
 		NodeCache[node.id] = node
 	}
+
+	lastCacheLookup = time.Now()
 	return results
 }
 func listNodesThatWillFund(ui *UI) []Node {
@@ -165,6 +177,20 @@ func listNodesThatWillFund(ui *UI) []Node {
 	}
 	return results
 }
+func listNodesByAliasOrID(ui *UI, term string) []Node {
+	var results []Node
+	nodes := listNodes(ui)
+	for _, node := range nodes {
+		alias := strings.ToLower(node.alias)
+		t := strings.Trim(term, " ")
+		if strings.Contains(alias, strings.ToLower(t)) || strings.Contains(node.id, t) {
+			results = append(results, node)
+		}
+	}
+	return results
+}
+
+
 func listChannels(ui *UI) gjson.Result {
 
 	return call(ui, "listchannels")
@@ -182,7 +208,7 @@ func getForwards(ui *UI, params map[string]interface{}) gjson.Result {
 
 }
 
-func getFunds(ui *UI, spent bool) gjson.Result {
+func listFunds(ui *UI, spent bool) gjson.Result {
 
 	return call(ui, "listfunds", spent)
 
@@ -211,4 +237,14 @@ func setChannelFee(ui *UI, scid string, base, rate int) gjson.Result {
 		"ppm": rate,
 	}
 	return call(ui, "setchannelfee", params)
+}
+
+func fundChannel(ui *UI, nodeID string, channelSize int, feerate string, announce bool) gjson.Result {
+	params := map[string]interface{} {
+		"id": nodeID,
+		"amount": fmt.Sprintf("%dsat", channelSize),
+		"feerate": feerate,
+		"announce": announce,
+	}
+	return call(ui, "fundchannel", params)
 }

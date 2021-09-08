@@ -145,7 +145,7 @@ func dashPage(ui *UI) tview.Primitive {
 	fundsPane.SetBorder(true).SetBorderColor(BorderColor).SetTitle(" Available funds ")
 	fundsPane.SetDynamicColors(true)
 
-	funds := getFunds(ui, true) // list both confirmed and spent funds
+	funds := listFunds(ui, true) // list both confirmed and spent funds
 
 	transactions := getTransactions(ui)
 

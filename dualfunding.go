@@ -44,7 +44,8 @@ func dualFundingPage(ui *UI) tview.Primitive {
 	liquidityTable.AddColumnHeader("\nfunding\nweight", tview.AlignRight)
 	liquidityTable.AddColumnHeader("\nchannel fee\nmax base", tview.AlignRight)
 	liquidityTable.AddColumnHeader("\nchannel fee\n max proportional", tview.AlignRight)
-	liquidityTable.Separator(20)
+	liquidityTable.AddColumnHeader("\nLease ID", tview.AlignLeft)
+	liquidityTable.Separator(10)
 
 	liquidityTable.SetDoneFunc(func(key tcell.Key) {
 		ui.FocusMenu()
@@ -76,6 +77,8 @@ func dualFundingPage(ui *UI) tview.Primitive {
 			tview.NewTableCell(formatSats(ad.optionWillFund.channelFeeMaxBaseMsat / 1000)).SetAlign(tview.AlignRight))
 		liquidityTable.SetCell(idx+rowOffset, 5,
 			tview.NewTableCell(formatSats(ad.optionWillFund.channelFeeMaxProportionalThousandths)).SetAlign(tview.AlignRight))
+		liquidityTable.SetCell(idx+rowOffset, 6,
+			tview.NewTableCell(ad.optionWillFund.compactLease).SetAlign(tview.AlignLeft))
 
 	}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/rivo/tview"
 	"github.com/tidwall/gjson"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -188,6 +189,12 @@ func channelsPage(ui *UI) *Table {
 	// Keyboard handler
 	t.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
+		case 'o':
+			if ui.HasPage("openChannel") {
+				ui.DeletePage("openChannel")
+			}
+			ui.AddPage("openChannel", ui.NewOpenChannelPage(), true, true)
+			ui.SetFocus("openChannel")
 		case 'f':
 			if ui.HasPage("channelFees") {
 				ui.DeletePage("channelFees")
@@ -209,7 +216,7 @@ func channelsPage(ui *UI) *Table {
 			"j/k   - Scroll down/up              ",
 			"G/g   - Scroll to bottom/top        ",
 			"Enter - Go to channel details page  ",
-			"o     - Open new channel(s)         ",
+			"o     - Open new channel            ",
 			"c     - Close selected channel      ",
 			"f     - Set channel fees            ",
 			"s     - Sort channels               ",
@@ -493,6 +500,91 @@ func getChannels(ui *UI) []Channel {
 
 }
 
+func (ui *UI) NewOpenChannelPage() tview.Primitive {
+	form := tview.NewForm()
+	form.SetBorder(true)
+	form.SetTitle(" Open new channel ")
+	form.SetBorderColor(BorderColor)
+	form.AddInputField("Node Alias (ID)", "", 110, nil, nil)
+
+	funds := listFunds(ui, false)
+	var availableFunds int64
+
+	for _, utxo := range funds.Get("outputs").Array() {
+		if utxo.Get("status").String() == "confirmed" && !utxo.Get("reserved").Bool() {
+			availableFunds += utxo.Get("value").Int()
+		}
+	}
+	form.AddInputField("Available funds (sats)", fmt.Sprintf("%d", availableFunds), 110, func(text string, lastChar rune) bool { return false}, nil)
+
+
+	form.AddInputField("Channel size (sats)", "", 110, tview.InputFieldInteger, nil)
+	form.AddCheckbox("Announce", true, nil)
+	options := []string{
+		"slow",
+		"normal",
+		"urgent",
+	}
+	form.AddDropDown("Feerate", options, 1, nil)
+
+	searchAlias := form.GetFormItemByLabel("Node Alias (ID)").(*tview.InputField)
+	searchAlias.SetAutocompleteFunc(func(currentText string) (entries []string) {
+
+		if len(currentText) < 2 {
+			return
+		}
+		nodes := listNodesByAliasOrID(ui, currentText)
+		if len(nodes) > 0 {
+			for _, node := range nodes {
+				entries = append(entries, fmt.Sprintf("%s (%s)", node.alias, node.id))
+			}
+			if len(entries) == 0 {
+				entries = nil
+			}
+		}
+		return
+	})
+
+
+	form.AddButton("Open channel", func() {
+		nodeAliasField := form.GetFormItemByLabel("Node Alias (ID)").(*tview.InputField)
+		nodeAlias := nodeAliasField.GetText()
+
+		re := regexp.MustCompile(`\(([a-z0-9]+)\)$`)
+		matches := re.FindStringSubmatch(nodeAlias)
+		var nodeID string
+		if len(matches) == 2 {
+			nodeID = matches[1]
+			ui.log.Info("Match: " + matches[1] + "\n")
+		} else {
+			ui.log.Warn(fmt.Sprintf("Could not find node %s\n", nodeAlias))
+		}
+
+		channelSizeField := form.GetFormItemByLabel("Channel size (sats)").(*tview.InputField)
+		channelSize, err := strconv.Atoi(channelSizeField.GetText())
+		if err != nil {
+			ui.log.Warn(fmt.Sprintf("Incorrect channel size: %s", err.Error()))
+		}
+
+		feerateField := form.GetFormItemByLabel("Feerate").(*tview.DropDown)
+		_, feerate := feerateField.GetCurrentOption()
+
+		announceField := form.GetFormItemByLabel("Announce").(*tview.Checkbox)
+		announce := announceField.IsChecked()
+		ui.log.Info(fmt.Sprintf("Opening channel with %s, size: %d sats, feerate: %s, announce: %t\n", nodeID, channelSize, feerate, announce))
+		response := fundChannel(ui, nodeID, channelSize, feerate, announce)
+
+		ui.log.Info(response.String())
+		ui.pages.HidePage("openChannel")
+		ui.SetFocus("channels")
+	})
+	form.AddButton("Cancel", func() {
+		ui.pages.HidePage("openChannel")
+		ui.SetFocus("channels")
+	})
+
+	return ui.Modal(form, 120, 16)
+}
 func (ui *UI) NewChannelFeesPage(channel Channel) tview.Primitive {
 	form := tview.NewForm()
 	form.SetBorder(true)
