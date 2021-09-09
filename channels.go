@@ -101,7 +101,7 @@ var sortFuncs = SortFuncs {
 		sort.Slice(channels, func(i, j int) bool {
 			c1 := channels[i]
 			c2 := channels[j]
-			return c1.remoteAlias < c2.remoteAlias
+			return strings.ToLower(c1.remoteAlias) < strings.ToLower(c2.remoteAlias)
 		})
 		return channels
 	},
