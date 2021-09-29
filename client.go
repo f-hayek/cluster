@@ -248,3 +248,12 @@ func fundChannel(ui *UI, nodeID string, channelSize int, feerate string, announc
 	}
 	return call(ui, "fundchannel", params)
 }
+
+func offer(ui *UI, amount int, description string) gjson.Result {
+	params := map[string]interface{} {
+		"amount": fmt.Sprintf("%dsat", amount),
+		"description": description,
+	}
+
+	return call(ui, "offer", params)
+}

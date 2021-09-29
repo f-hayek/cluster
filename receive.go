@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	//	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/tidwall/gjson"
@@ -25,11 +26,17 @@ func receivePage(ui *UI) tview.Primitive {
 	qr.SetTitle(" QR Code ")
 	qr.SetTextAlign(tview.AlignCenter)
 
+	typeOptions := []string{
+		"bolt11",
+		"bolt12",
+		"onchain",}
+
+	initialType := 0
 	form := tview.NewForm()
-	form.AddInputField("Satoshi", "", 30, tview.InputFieldInteger, nil).
+	form.AddDropDown("Type", typeOptions, initialType, nil).
+		AddInputField("Satoshi", "", 30, tview.InputFieldInteger, nil).
 		AddInputField("Memo", "", 30, nil, nil).
 		AddInputField("Expires in (days)", defaultTimeout, 30, tview.InputFieldInteger, nil).
-		AddCheckbox("Receive on-chain", false, nil).
 		AddButton("Receive", func() {
 			ui.handleCreateInvoice(form, qr)
 		}).
@@ -52,20 +59,24 @@ func generateLabel() string {
 
 func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 	satoshiField := form.GetFormItemByLabel("Satoshi").(*tview.InputField)
-	onChainField := form.GetFormItemByLabel("Receive on-chain").(*tview.Checkbox)
+	typeField := form.GetFormItemByLabel("Type").(*tview.DropDown)
 	descField := form.GetFormItemByLabel("Memo").(*tview.InputField)
 	timeoutField := form.GetFormItemByLabel("Expires in (days)").(*tview.InputField)
 
 	sats, err := strconv.Atoi(satoshiField.GetText())
 	if err != nil {
-		ui.log.Warn("Incorrect amount: " + err.Error())
+		ui.log.Warn("Incorrect satoshi amount: " + err.Error())
 	}
 
 	timeout, err := strconv.Atoi(timeoutField.GetText())
 	if err != nil || timeout <= 0 {
 		ui.log.Warn("Timeout value " + timeoutField.GetText() + " is incorrect\n")
 	}
-	if onChainField.IsChecked() {
+
+	_, selectedType := typeField.GetCurrentOption()
+
+	switch selectedType {
+	case "onchain":
 		newAddr := getNewAddr(ui).Get("bech32").String()
 		qrs, err := QRCode(newAddr)
 		if err != nil {
@@ -73,8 +84,7 @@ func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 		}
 		qr.SetText("\n" + qrs)
 
-	} else {
-
+	case "bolt11":
 		inv := getInvoice(ui, map[string]interface{}{
 			"msatoshi":    sats * 1000,
 			"label":       generateLabel(),
@@ -96,14 +106,27 @@ func (ui *UI) handleCreateInvoice(form *tview.Form, qr *tview.TextView) {
 				ui.log.Info("Invoice [white]" + paymentHash + " ")
 				ui.log.Ok("PAID\n")
 				satoshiField.SetText("")
-				onChainField.SetChecked(false)
 				descField.SetText("")
 				timeoutField.SetText(defaultTimeout)
 				ln.PaymentHandler = nil
 			}
 		}
 		ln.ListenForInvoices()
-	}
+	case "bolt12":
+		ui.log.Info("Bolt12 selected\n")
 
+		o := offer(ui, sats, descField.GetText())
+
+		bolt12 := o.Get("bolt12").String()
+		offerID := o.Get("offer_id").String()
+
+		qrs, err := QRCode(bolt12)
+		if err != nil {
+			ui.log.Warn("Error generating offer QR code: " + err.Error() + "\n")
+		}
+		qr.SetText("\n" + qrs)
+		ui.log.Info(fmt.Sprintf("Offer ID: %s", offerID))
+		ui.log.Info(fmt.Sprintf("Bolt12: %s", bolt12))
+	}
 	return
 }
